@@ -183,9 +183,9 @@ flutter test --coverage
 | Name | Student ID | Contact |
 |------|------|---------|
 | Tran Dinh Tin | 123210153 | learning.dinhtin@gmail.com |
-| Tran Van Dinh Sang | 123210147 | email@example.com |
-| Thai Nam Hung | 123210057 | email@example.com |
-| Nguyen Thi Yen Nhi | 123210143 | email@example.com |
+| Tran Van Dinh Sang | 123210147 | dinhsang2313@gmail.com |
+| Thai Nam Hung | 123210057 | hungthai3113@gmail.com |
+| Nguyen Thi Yen Nhi | 123210143 | yennhinguyen22022003@gmail.com |
 
 ## 🔗 Resources
 
