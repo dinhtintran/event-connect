@@ -111,11 +111,11 @@ event_connect/
 
 | Week | Tasks | Status | Deliverables | Team Members | Notes |
 |------|-------|--------|--------------|--------------|-------|
-| **Week 1**<br>*(Oct 14 - Oct 20)* | - Project setup and initialization<br>- Design system and UI/UX mockups<br>- Setup version control (Git)<br>- Define architecture and folder structure<br>- Create data models | 🟡 In Progress | - Project repository<br>- Design documentation<br>- Architecture diagram<br>- Basic app skeleton | All team members | Initial planning phase |
-| **Week 2**<br>*(Oct 21 - Oct 27)* | - Implement authentication (Login/Register)<br>- Setup database schema<br>- Create home screen and navigation<br>- Build event list/grid view<br>- Implement event detail screen | ⚪ Not Started | - Authentication module<br>- Database setup<br>- Core screens<br>- Navigation flow | Frontend & Backend teams | Focus on core features |
-| **Week 3**<br>*(Oct 28 - Nov 3)* | - Implement event creation/editing<br>- Add event search and filtering<br>- Integrate map for location features<br>- Build user profile screen<br>- Setup push notifications | ⚪ Not Started | - Event CRUD operations<br>- Search functionality<br>- Map integration<br>- Profile management | All teams | Major features week |
-| **Week 4**<br>*(Nov 4 - Nov 10)* | - Implement ticketing system<br>- Add social features (comments, likes)<br>- Real-time updates integration<br>- Image upload and storage<br>- Testing and bug fixes | ⚪ Not Started | - Ticketing module<br>- Social features<br>- Image handling<br>- Test reports | All teams | Feature completion |
-| **Week 5**<br>*(Nov 11 - Nov 17)* | - Final testing and QA<br>- Performance optimization<br>- Documentation completion<br>- Deployment preparation<br>- Project presentation prep | ⚪ Not Started | - Final application<br>- Complete documentation<br>- Deployment package<br>- Presentation slides | All teams | Final polishing |
+| **Week 1**<br>*(Oct 8 - Oct 13)* | - Project setup and initialization<br>- Design system and UI/UX mockups<br>- Setup version control (Git)<br>- Define architecture and folder structure<br>- Create data models | 🟡 In Progress | - Project repository<br>- Design documentation<br>- Architecture diagram<br>- Basic app skeleton | All team members | Initial planning phase |
+| **Week 2**<br>*(Oct 14 - Oct 20)* | - Implement authentication (Login/Register)<br>- Setup database schema<br>- Create home screen and navigation<br>- Build event list/grid view<br>- Implement event detail screen | ⚪ Not Started | - Authentication module<br>- Database setup<br>- Core screens<br>- Navigation flow | Frontend & Backend teams | Focus on core features |
+| **Week 3**<br>*(Oct 21 - Nov 27)* | - Implement event creation/editing<br>- Add event search and filtering<br>- Integrate map for location features<br>- Build user profile screen<br>- Setup push notifications | ⚪ Not Started | - Event CRUD operations<br>- Search functionality<br>- Map integration<br>- Profile management | All teams | Major features week |
+| **Week 4**<br>*(Nov 28 - Nov 3)* | - Implement ticketing system<br>- Add social features (comments, likes)<br>- Real-time updates integration<br>- Image upload and storage<br>- Testing and bug fixes | ⚪ Not Started | - Ticketing module<br>- Social features<br>- Image handling<br>- Test reports | All teams | Feature completion |
+| **Week 5**<br>*(Nov 4 - Nov 10)* | - Final testing and QA<br>- Performance optimization<br>- Documentation completion<br>- Deployment preparation<br>- Project presentation prep | ⚪ Not Started | - Final application<br>- Complete documentation<br>- Deployment package<br>- Presentation slides | All teams | Final polishing |
 
 ### Status Legend
 - 🟢 **Completed**: Task finished and verified
@@ -125,7 +125,7 @@ event_connect/
 
 ## 📝 Weekly Reports
 
-### Week 1 Report (Oct 14 - Oct 20)
+### Week 1 Report (Oct 8 - Oct 13)
 - **Achievements**: 
   - Project initialized with Flutter
   - Repository created and team access granted
@@ -133,22 +133,22 @@ event_connect/
 - **Challenges**: TBD
 - **Next Steps**: Complete UI/UX design and finalize architecture
 
-### Week 2 Report (Oct 21 - Oct 27)
+### Week 2 Report (Oct 14 - Oct 20)
 - **Achievements**: TBD
 - **Challenges**: TBD
 - **Next Steps**: TBD
 
-### Week 3 Report (Oct 28 - Nov 3)
+### Week 3 Report (Oct 21 - Nov 27)
 - **Achievements**: TBD
 - **Challenges**: TBD
 - **Next Steps**: TBD
 
-### Week 4 Report (Nov 4 - Nov 10)
+### Week 4 Report (Nov 28 - Nov 3)
 - **Achievements**: TBD
 - **Challenges**: TBD
 - **Next Steps**: TBD
 
-### Week 5 Report (Nov 11 - Nov 17)
+### Week 5 Report (Nov 4 - Nov 10)
 - **Achievements**: TBD
 - **Challenges**: TBD
 - **Next Steps**: TBD
