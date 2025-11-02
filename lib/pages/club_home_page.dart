@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'club_events_page.dart';
 
 class ClubHomePage extends StatefulWidget {
   const ClubHomePage({Key? key}) : super(key: key);
@@ -8,13 +9,35 @@ class ClubHomePage extends StatefulWidget {
 }
 
 class _ClubHomePageState extends State<ClubHomePage> {
-  int _selectedIndex = 1; // 1 = Sự kiện (đang được chọn)
+  int _selectedIndex = 0; // 0 = Trang chủ
+
+  // Hiệu ứng trượt ngang khi chuyển sang trang khác
+  Route _createSlideRoute(Widget page) {
+    return PageRouteBuilder(
+      pageBuilder: (context, animation, secondaryAnimation) => page,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        const begin = Offset(1.0, 0.0); // từ bên phải sang
+        const end = Offset.zero;
+        const curve = Curves.easeInOut;
+
+        var tween =
+        Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+
+        return SlideTransition(
+          position: animation.drive(tween),
+          child: child,
+        );
+      },
+    );
+  }
 
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-    // TODO: điều hướng sang trang khác (nếu có)
+    setState(() => _selectedIndex = index);
+
+    // 👉 Nếu bấm tab "Sự kiện" trong bottom nav -> chuyển sang trang ClubEventsPage
+    if (index == 1) {
+      Navigator.push(context, _createSlideRoute(const ClubEventsPage()));
+    }
   }
 
   @override
@@ -24,6 +47,7 @@ class _ClubHomePageState extends State<ClubHomePage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F8FB),
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: Colors.white,
         elevation: 0.5,
         centerTitle: true,
@@ -118,7 +142,13 @@ class _ClubHomePageState extends State<ClubHomePage> {
                     TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
                   ),
                   GestureDetector(
-                    onTap: () {},
+                    // 👉 Khi bấm "Xem tất cả" -> chuyển sang trang ClubEventsPage (có hiệu ứng trượt)
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        _createSlideRoute(const ClubEventsPage()),
+                      );
+                    },
                     child: Text(
                       'Xem tất cả',
                       style: TextStyle(
@@ -130,37 +160,9 @@ class _ClubHomePageState extends State<ClubHomePage> {
                 ],
               ),
 
-              // Create event button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    // Thêm hành động khi bấm button ở đây
-                  },
-                  icon: const Icon(
-                    Icons.add,
-                    color: Colors.white, // màu icon
-                  ),
-                  label: const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12.0),
-                    child: Text(
-                      'Tạo sự kiện mới',
-                      style: TextStyle(color: Colors.white, fontSize: 16),
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF5568FF), // màu nền
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    elevation: 0,
-                  ),
-                ),
-              ),
-
               const SizedBox(height: 14),
 
-              // Event cards list
+              // Event cards
               _EventCard(
                 title: 'Hội nghị Công nghệ 2024',
                 status: 'Live',
@@ -187,7 +189,6 @@ class _ClubHomePageState extends State<ClubHomePage> {
 
               const SizedBox(height: 22),
 
-              // Notifications header
               const Text(
                 'Thông báo quan trọng',
                 style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
@@ -329,7 +330,6 @@ class _EventCard extends StatelessWidget {
 
           const SizedBox(height: 10),
 
-          // Buttons
           Row(
             children: [
               OutlinedButton(
