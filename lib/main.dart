@@ -26,7 +26,7 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: Colors.white,
         useMaterial3: true,
       ),
-      home: const ClubHomePage(), // 👈 Trang chủ CLB bạn muốn
+      home: const ClubHomePage(), //Trang chủ CLB
     );
   }
 }

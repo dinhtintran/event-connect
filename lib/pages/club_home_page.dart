@@ -1,9 +1,3 @@
-// lib/pages/club_home_page.dart
-// Mẫu trang "Trang chủ câu lạc bộ" (Club Home Page) cho project event-connect.
-// - File này là một widget độc lập (ClubHomePage) bạn có thể import vào main.dart
-// - Thiết kế responsive cơ bản, UI giống mockup: banner, sự kiện gần đây, thông báo, bottom nav
-// - Dùng ảnh banner từ mạng để tránh cấu hình assets. Bạn có thể đổi thành assets nếu muốn.
-
 import 'package:flutter/material.dart';
 
 class ClubHomePage extends StatefulWidget {
@@ -14,13 +8,13 @@ class ClubHomePage extends StatefulWidget {
 }
 
 class _ClubHomePageState extends State<ClubHomePage> {
-  int _selectedIndex = 1; // ví dụ: 1 = Sự kiện (highlighted in screenshot)
+  int _selectedIndex = 1; // 1 = Sự kiện (đang được chọn)
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
-    // TODO: navigate to other pages when available
+    // TODO: điều hướng sang trang khác (nếu có)
   }
 
   @override
@@ -33,7 +27,7 @@ class _ClubHomePageState extends State<ClubHomePage> {
         backgroundColor: Colors.white,
         elevation: 0.5,
         centerTitle: true,
-        title: Text(
+        title: const Text(
           'Tổng quan',
           style: TextStyle(
             color: Colors.black87,
@@ -46,13 +40,11 @@ class _ClubHomePageState extends State<ClubHomePage> {
             icon: const Icon(Icons.notifications_none, color: Colors.black54),
             onPressed: () {},
           ),
-          Padding(
-            padding: const EdgeInsets.only(right: 12.0),
+          const Padding(
+            padding: EdgeInsets.only(right: 12.0),
             child: CircleAvatar(
               radius: 16,
-              backgroundImage: NetworkImage(
-                'assets/images/beongnho2.jpg',
-              ),
+              backgroundImage: AssetImage('assets/images/beongnho2.jpg'),
             ),
           )
         ],
@@ -73,26 +65,27 @@ class _ClubHomePageState extends State<ClubHomePage> {
                     borderRadius: BorderRadius.circular(12),
                     image: const DecorationImage(
                       fit: BoxFit.cover,
-                      image: NetworkImage(
-                        'assets/images/background.jpg',
-                      ),
+                      image: AssetImage('assets/images/background.jpg'),
                     ),
                   ),
                   child: Container(
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
                       gradient: LinearGradient(
-                        colors: [Colors.black.withOpacity(0.45), Colors.transparent],
+                        colors: [
+                          Colors.black.withOpacity(0.45),
+                          Colors.transparent
+                        ],
                         begin: Alignment.bottomLeft,
                         end: Alignment.topRight,
                       ),
                     ),
                     padding: const EdgeInsets.all(14),
                     alignment: Alignment.bottomLeft,
-                    child: Column(
+                    child: const Column(
                       mainAxisAlignment: MainAxisAlignment.end,
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
+                      children: [
                         Text(
                           'Chào mừng bạn trở lại, Đội ngũ EventConnect!',
                           style: TextStyle(
@@ -104,7 +97,8 @@ class _ClubHomePageState extends State<ClubHomePage> {
                         SizedBox(height: 4),
                         Text(
                           'Tổng quan sự kiện của bạn trong nháy mắt.',
-                          style: TextStyle(color: Colors.white70, fontSize: 12),
+                          style: TextStyle(
+                              color: Colors.white70, fontSize: 12),
                         ),
                       ],
                     ),
@@ -120,33 +114,45 @@ class _ClubHomePageState extends State<ClubHomePage> {
                 children: [
                   const Text(
                     'Sự kiện gần đây',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                    style:
+                    TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
                   ),
                   GestureDetector(
                     onTap: () {},
                     child: Text(
                       'Xem tất cả',
-                      style: TextStyle(color: theme.primaryColor, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        color: theme.primaryColor,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ],
               ),
 
-              const SizedBox(height: 12),
-
               // Create event button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.add),
+                  onPressed: () {
+                    // Thêm hành động khi bấm button ở đây
+                  },
+                  icon: const Icon(
+                    Icons.add,
+                    color: Colors.white, // màu icon
+                  ),
                   label: const Padding(
                     padding: EdgeInsets.symmetric(vertical: 12.0),
-                    child: Text('Tạo sự kiện mới'),
+                    child: Text(
+                      'Tạo sự kiện mới',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    backgroundColor: Color(0xFF5568FF),
+                    backgroundColor: const Color(0xFF5568FF), // màu nền
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                     elevation: 0,
                   ),
                 ),
@@ -154,7 +160,7 @@ class _ClubHomePageState extends State<ClubHomePage> {
 
               const SizedBox(height: 14),
 
-              // Event cards list (sample)
+              // Event cards list
               _EventCard(
                 title: 'Hội nghị Công nghệ 2024',
                 status: 'Live',
@@ -189,7 +195,6 @@ class _ClubHomePageState extends State<ClubHomePage> {
 
               const SizedBox(height: 12),
 
-              // Notification items
               _NotificationTile(
                 title: 'Phê duyệt sự kiện đang chờ',
                 subtitle: 'Hội nghị Khoa học Trẻ cần xem xét.',
@@ -202,7 +207,8 @@ class _ClubHomePageState extends State<ClubHomePage> {
 
               _NotificationTile(
                 title: 'Hạn chót sắp tới',
-                subtitle: "Đăng ký cho 'Đêm Gala' kết thúc sau 3 ngày.",
+                subtitle:
+                "Đăng ký cho 'Đêm Gala' kết thúc sau 3 ngày.",
                 icon: Icons.error_outline,
                 accent: Colors.red,
                 onTap: () {},
@@ -214,6 +220,7 @@ class _ClubHomePageState extends State<ClubHomePage> {
         ),
       ),
 
+      // Bottom Navigation Bar
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: _selectedIndex,
@@ -222,20 +229,25 @@ class _ClubHomePageState extends State<ClubHomePage> {
         showUnselectedLabels: true,
         onTap: _onItemTapped,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Trang Chủ'),
-          BottomNavigationBarItem(icon: Icon(Icons.event), label: 'Sự Kiện'),
-          BottomNavigationBarItem(icon: Icon(Icons.mail_outline), label: 'Thư'),
-          BottomNavigationBarItem(icon: Icon(Icons.bar_chart_outlined), label: 'Thống Kê'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Hồ Sơ'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.home), label: 'Trang Chủ'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.event), label: 'Sự Kiện'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.mail_outline), label: 'Thư'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.bar_chart_outlined), label: 'Thống Kê'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline), label: 'Hồ Sơ'),
         ],
       ),
     );
   }
 }
 
-// ----------------------
-// Widgets used inside the page
-// ----------------------
+// =============================
+// Widgets phụ trợ
+// =============================
 
 class _EventCard extends StatelessWidget {
   final String title;
@@ -261,14 +273,12 @@ class _EventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final percent = capacity > 0 ? (registered / capacity) : 0.0;
-
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2)),
         ],
       ),
@@ -276,17 +286,22 @@ class _EventCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Title & Status
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: isLive ? Colors.green[50] : Colors.grey[100],
                   borderRadius: BorderRadius.circular(20),
@@ -299,32 +314,40 @@ class _EventCard extends StatelessWidget {
                     fontSize: 12,
                   ),
                 ),
-              )
+              ),
             ],
           ),
+
           const SizedBox(height: 8),
+
           const Text('Đăng ký', style: TextStyle(color: Colors.black54)),
           const SizedBox(height: 4),
-          Text('$registered/$capacity', style: const TextStyle(fontWeight: FontWeight.w600)),
+          Text(
+            '$registered/$capacity',
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+
           const SizedBox(height: 10),
 
-          // Buttons row
+          // Buttons
           Row(
             children: [
               OutlinedButton(
                 onPressed: onManage,
-                child: const Text('Quản lý'),
                 style: OutlinedButton.styleFrom(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
                 ),
+                child: const Text('Quản lý'),
               ),
               const SizedBox(width: 8),
               OutlinedButton(
                 onPressed: onRegister,
-                child: const Text('Đăng ký'),
                 style: OutlinedButton.styleFrom(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
                 ),
+                child: const Text('Đăng ký'),
               ),
               const SizedBox(width: 8),
               IconButton(
@@ -333,7 +356,7 @@ class _EventCard extends StatelessWidget {
                 color: Colors.black54,
               ),
             ],
-          )
+          ),
         ],
       ),
     );
@@ -367,7 +390,9 @@ class _NotificationTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))],
+          boxShadow: const [
+            BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))
+          ],
         ),
         child: Row(
           children: [
@@ -381,9 +406,16 @@ class _NotificationTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                  Text(title,
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 4),
-                  Text(subtitle, style: const TextStyle(color: Colors.black54, fontSize: 13)),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: Colors.black54,
+                      fontSize: 13,
+                    ),
+                  ),
                 ],
               ),
             ),
