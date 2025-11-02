@@ -17,14 +17,33 @@ class _ExploreScreenState extends State<ExploreScreen> {
   bool isGridView = true;
   int displayedEventsCount = 4; // Hiển thị 4 sự kiện ban đầu
   bool isLoadingMore = false;
+  
+  // Filter states
+  Set<String> selectedCategories = {};
+  DateTimeRange? selectedDateRange;
 
   List<Event> get filteredEvents {
     List<Event> events = DummyData.events;
     
+    // Filter by category chip
     if (selectedCategory != 'Tất cả') {
       events = events.where((event) => event.category == selectedCategory).toList();
     }
+    
+    // Filter by selected categories from filter dialog
+    if (selectedCategories.isNotEmpty) {
+      events = events.where((event) => selectedCategories.contains(event.category)).toList();
+    }
+    
+    // Filter by date range
+    if (selectedDateRange != null) {
+      events = events.where((event) {
+        return event.date.isAfter(selectedDateRange!.start.subtract(const Duration(days: 1))) &&
+               event.date.isBefore(selectedDateRange!.end.add(const Duration(days: 1)));
+      }).toList();
+    }
 
+    // Filter by search text
     if (searchController.text.isNotEmpty) {
       events = events.where((event) => 
         event.title.toLowerCase().contains(searchController.text.toLowerCase())
@@ -560,87 +579,232 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   void _showFilterDialog() {
+    // Tạo bản sao của filter states để có thể cancel
+    Set<String> tempSelectedCategories = Set.from(selectedCategories);
+    DateTimeRange? tempDateRange = selectedDateRange;
+    
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            return Container(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Bộ lọc sự kiện',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF120D26),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  // Categories Section
                   const Text(
-                    'Bộ lọc',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF120D26),
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Sắp xếp theo',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF120D26),
-                ),
-              ),
-              const SizedBox(height: 12),
-              _buildFilterOption('Mới nhất'),
-              _buildFilterOption('Phổ biến nhất'),
-              _buildFilterOption('Gần đây nhất'),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF5669FF),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'Áp dụng',
+                    'Danh mục',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
+                      color: Color(0xFF120D26),
                     ),
                   ),
-                ),
+                  const SizedBox(height: 12),
+                  
+                  _buildCategoryCheckbox('Âm nhạc', tempSelectedCategories, setModalState),
+                  _buildCategoryCheckbox('Thể thao', tempSelectedCategories, setModalState),
+                  _buildCategoryCheckbox('Nghệ thuật', tempSelectedCategories, setModalState),
+                  _buildCategoryCheckbox('Giáo dục', tempSelectedCategories, setModalState),
+                  _buildCategoryCheckbox('Công nghệ', tempSelectedCategories, setModalState),
+                  _buildCategoryCheckbox('Môi trường', tempSelectedCategories, setModalState),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // Date Section
+                  const Text(
+                    'Ngày',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF120D26),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  
+                  InkWell(
+                    onTap: () async {
+                      final DateTimeRange? picked = await showDateRangePicker(
+                        context: context,
+                        firstDate: DateTime(2024),
+                        lastDate: DateTime(2026),
+                        initialDateRange: tempDateRange,
+                        builder: (context, child) {
+                          return Theme(
+                            data: Theme.of(context).copyWith(
+                              colorScheme: const ColorScheme.light(
+                                primary: Color(0xFF5669FF),
+                              ),
+                            ),
+                            child: child!,
+                          );
+                        },
+                      );
+                      if (picked != null) {
+                        setModalState(() {
+                          tempDateRange = picked;
+                        });
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.calendar_today,
+                            size: 20,
+                            color: Color(0xFF5669FF),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              tempDateRange == null
+                                  ? '01/01/2024 - 31/12/2024'
+                                  : '${tempDateRange!.start.day.toString().padLeft(2, '0')}/${tempDateRange!.start.month.toString().padLeft(2, '0')}/${tempDateRange!.start.year} - ${tempDateRange!.end.day.toString().padLeft(2, '0')}/${tempDateRange!.end.month.toString().padLeft(2, '0')}/${tempDateRange!.end.year}',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF120D26),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // Apply Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          selectedCategories = tempSelectedCategories;
+                          selectedDateRange = tempDateRange;
+                          displayedEventsCount = 4; // Reset
+                        });
+                        Navigator.pop(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF5669FF),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        'Áp dụng bộ lọc',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 12),
+                  
+                  // Reset Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () {
+                        setModalState(() {
+                          tempSelectedCategories.clear();
+                          tempDateRange = null;
+                        });
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF120D26),
+                        side: BorderSide(color: Colors.grey.shade300),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Đặt lại',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 20),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
   }
 
-  Widget _buildFilterOption(String title) {
-    return ListTile(
-      title: Text(title),
-      trailing: Radio(
-        value: title,
-        groupValue: null,
-        onChanged: (value) {},
-        activeColor: const Color(0xFF5669FF),
+  Widget _buildCategoryCheckbox(
+    String category,
+    Set<String> selectedCategories,
+    StateSetter setModalState,
+  ) {
+    final isSelected = selectedCategories.contains(category);
+    return CheckboxListTile(
+      title: Text(
+        category,
+        style: const TextStyle(
+          fontSize: 15,
+          color: Color(0xFF120D26),
+        ),
       ),
+      value: isSelected,
+      onChanged: (bool? value) {
+        setModalState(() {
+          if (value == true) {
+            selectedCategories.add(category);
+          } else {
+            selectedCategories.remove(category);
+          }
+        });
+      },
+      activeColor: const Color(0xFF5669FF),
       contentPadding: EdgeInsets.zero,
-      onTap: () {},
+      controlAffinity: ListTileControlAffinity.leading,
     );
   }
 
