@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/event.dart';
 import '../utils/dummy_data.dart';
+import 'event_detail_screen.dart';
 
 class MyEventsScreen extends StatefulWidget {
   const MyEventsScreen({super.key});
@@ -218,10 +219,20 @@ class _MyEventsScreenState extends State<MyEventsScreen>
       padding: const EdgeInsets.all(20),
       itemCount: events.length,
       itemBuilder: (context, index) {
-        return MyEventCard(
-          event: events[index],
-          isUpcoming: isUpcoming,
-          isSaved: isSaved,
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => EventDetailScreen(event: events[index]),
+              ),
+            );
+          },
+          child: MyEventCard(
+            event: events[index],
+            isUpcoming: isUpcoming,
+            isSaved: isSaved,
+          ),
         );
       },
     );

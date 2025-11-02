@@ -15,6 +15,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   String selectedCategory = 'Tất cả';
   final TextEditingController searchController = TextEditingController();
+  int displayedUpcomingEventsCount = 3; // Hiển thị 3 sự kiện ban đầu
+  bool isLoadingMore = false;
 
   List<Event> get filteredEvents {
     if (selectedCategory == 'Tất cả') {
@@ -29,8 +31,30 @@ class _HomeScreenState extends State<HomeScreen> {
     return DummyData.events.where((event) => event.isFeatured).toList();
   }
 
-  List<Event> get upcomingEvents {
+  List<Event> get allUpcomingEvents {
     return DummyData.events.where((event) => !event.isFeatured).toList();
+  }
+
+  List<Event> get displayedUpcomingEvents {
+    return allUpcomingEvents.take(displayedUpcomingEventsCount).toList();
+  }
+
+  bool get hasMoreEvents {
+    return displayedUpcomingEventsCount < allUpcomingEvents.length;
+  }
+
+  void _loadMoreEvents() {
+    setState(() {
+      isLoadingMore = true;
+    });
+
+    // Giả lập việc tải dữ liệu từ server
+    Future.delayed(const Duration(milliseconds: 500), () {
+      setState(() {
+        displayedUpcomingEventsCount += 3; // Tải thêm 3 sự kiện mỗi lần
+        isLoadingMore = false;
+      });
+    });
   }
 
   @override
@@ -92,9 +116,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: Column(
-                          children: upcomingEvents
-                              .map((event) => EventListItem(event: event))
-                              .toList(),
+                          children: [
+                            ...displayedUpcomingEvents
+                                .map((event) => EventListItem(event: event))
+                                .toList(),
+                            // Load More Button
+                            if (hasMoreEvents) ...[
+                              const SizedBox(height: 16),
+                              _buildLoadMoreButton(),
+                            ],
+                          ],
                         ),
                       ),
                     ),
@@ -240,6 +271,46 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(height: 16),
         child,
       ],
+    );
+  }
+
+  Widget _buildLoadMoreButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton(
+        onPressed: isLoadingMore ? null : _loadMoreEvents,
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          side: const BorderSide(color: Color(0xFF5669FF), width: 1.5),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          foregroundColor: const Color(0xFF5669FF),
+        ),
+        child: isLoadingMore
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF5669FF)),
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.add, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Tải thêm sự kiện (${allUpcomingEvents.length - displayedUpcomingEventsCount})',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+      ),
     );
   }
 
