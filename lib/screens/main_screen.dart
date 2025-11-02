@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'home_screen.dart';
 import 'my_events_screen.dart';
+import 'explore_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -14,7 +15,7 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _screens = [
     const HomeScreen(),
-    const PlaceholderScreen(title: 'Khám phá'),
+    const ExploreScreen(),
     const MyEventsScreen(),
     const PlaceholderScreen(title: 'Hồ sơ'),
   ];
