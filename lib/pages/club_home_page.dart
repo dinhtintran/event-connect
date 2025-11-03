@@ -261,7 +261,6 @@ class _EventCard extends StatelessWidget {
   final VoidCallback onEdit;
 
   const _EventCard({
-    super.key,
     required this.title,
     required this.status,
     required this.registered,
@@ -371,7 +370,6 @@ class _NotificationTile extends StatelessWidget {
   final VoidCallback onTap;
 
   const _NotificationTile({
-    super.key,
     required this.title,
     required this.subtitle,
     required this.icon,
