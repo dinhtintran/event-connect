@@ -5,6 +5,7 @@ import 'src/routes.dart';
 import 'src/auth/auth_service.dart';
 import 'src/screens/login_screen.dart';
 import 'src/screens/register_screen.dart';
+import 'screens/main_screen.dart';
 import 'package:dio/dio.dart';
 import 'src/services/token_storage.dart';
 import 'src/config.dart';
@@ -13,11 +14,11 @@ import 'src/services/auth_api.dart';
 import 'src/services/auth_repository.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const EventConnectApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class EventConnectApp extends StatelessWidget {
+  const EventConnectApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -64,36 +65,10 @@ class MyApp extends StatelessWidget {
         routes: {
           Routes.login: (_) => const LoginScreen(),
           Routes.register: (_) => const RegisterScreen(),
-          Routes.home: (_) => const _HomeScreen(),
+          Routes.home: (_) => const MainScreen(),
         },
       ),
     );
   }
 }
 
-class _HomeScreen extends StatelessWidget {
-  const _HomeScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    final auth = Provider.of<AuthService>(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Event Connect'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              final nav = Navigator.of(context);
-              await auth.logout();
-              nav.pushReplacementNamed(Routes.login);
-            },
-          )
-        ],
-      ),
-      body: Center(
-        child: Text('Welcome ${auth.user?.profile.displayName.isNotEmpty == true ? auth.user!.profile.displayName : auth.user?.username ?? 'User'}', style: const TextStyle(fontSize: 18)),
-      ),
-    );
-  }
-}
