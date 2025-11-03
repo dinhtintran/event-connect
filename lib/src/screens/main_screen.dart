@@ -9,10 +9,11 @@ class MainScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final auth = Provider.of<AuthService>(context);
-    final display = auth.user?.profile.displayName?.isNotEmpty == true
-        ? auth.user!.profile.displayName
-        : auth.user?.username ?? 'User';
+  final auth = Provider.of<AuthService>(context);
+  final user = auth.user;
+  final display = (user != null && user.profile.displayName.isNotEmpty)
+    ? user.profile.displayName
+    : (user?.username ?? 'User');
 
     return Scaffold(
       appBar: AppBar(

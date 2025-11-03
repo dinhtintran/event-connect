@@ -5,7 +5,7 @@ import 'src/routes.dart';
 import 'src/auth/auth_service.dart';
 import 'src/screens/login_screen.dart';
 import 'src/screens/register_screen.dart';
-import 'src/screens/main_screen.dart';
+import 'screens/main_screen.dart';
 import 'package:dio/dio.dart';
 import 'src/services/token_storage.dart';
 import 'src/config.dart';

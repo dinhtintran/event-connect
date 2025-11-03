@@ -29,7 +29,7 @@ class EventCardLarge extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withAlpha((0.1 * 255).round()),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
@@ -58,7 +58,7 @@ class EventCardLarge extends StatelessWidget {
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.transparent,
-                      Colors.black.withOpacity(0.8),
+                      Colors.black.withAlpha((0.8 * 255).round()),
                     ],
                   ),
                 ),

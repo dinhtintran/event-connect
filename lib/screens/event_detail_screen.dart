@@ -39,7 +39,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withAlpha((0.1 * 255).round()),
                           blurRadius: 8,
                         ),
                       ],
@@ -60,8 +60,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         color: Colors.white,
                         shape: BoxShape.circle,
                         boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
+              BoxShadow(
+                color: Colors.black.withAlpha((0.1 * 255).round()),
                             blurRadius: 8,
                           ),
                         ],
@@ -105,7 +105,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             end: Alignment.bottomCenter,
                             colors: [
                               Colors.transparent,
-                              Colors.black.withOpacity(0.7),
+                              Colors.black.withAlpha((0.7 * 255).round()),
                             ],
                           ),
                         ),
@@ -131,8 +131,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             const SizedBox(height: 8),
                             Text(
                               'Một buổi tối lãng mạn với những giai điệu jazz cổ điển dưới ánh sao.',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.9),
+                                style: TextStyle(
+                                color: Colors.white.withAlpha((0.9 * 255).round()),
                                 fontSize: 14,
                               ),
                               maxLines: 2,
@@ -156,7 +156,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                               child: Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.3),
+                                  color: Colors.white.withAlpha((0.3 * 255).round()),
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(
@@ -179,8 +179,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                               },
                               child: Container(
                                 padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.3),
+                                  decoration: BoxDecoration(
+                                  color: Colors.white.withAlpha((0.3 * 255).round()),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
@@ -353,7 +353,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withAlpha((0.05 * 255).round()),
                     blurRadius: 10,
                     offset: const Offset(0, -5),
                   ),
@@ -399,7 +399,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withAlpha((0.1 * 255).round()),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(

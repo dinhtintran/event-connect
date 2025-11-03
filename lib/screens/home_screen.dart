@@ -117,9 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: Column(
                           children: [
-                            ...displayedUpcomingEvents
-                                .map((event) => EventListItem(event: event))
-                                .toList(),
+              ...displayedUpcomingEvents.map((event) => EventListItem(event: event)),
                             // Load More Button
                             if (hasMoreEvents) ...[
                               const SizedBox(height: 16),
