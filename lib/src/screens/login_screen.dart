@@ -63,7 +63,13 @@ class _LoginScreenState extends State<LoginScreen> {
     final status = resp['status'] as int? ?? 0;
     final body = resp['body'] as Map<String, dynamic>? ?? {};
     if ((status == 200 || status == 201) && body['access'] != null) {
-      Navigator.of(context).pushReplacementNamed(Routes.home);
+      // route by role: club users go to ClubHomePage, others to the common home
+      final role = Provider.of<AuthService>(context, listen: false).user?.profile.role;
+      if (role == 'club') {
+        Navigator.of(context).pushReplacementNamed(Routes.clubHome);
+      } else {
+        Navigator.of(context).pushReplacementNamed(Routes.home);
+      }
       return;
     }
 
