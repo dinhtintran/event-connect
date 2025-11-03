@@ -52,7 +52,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _submit() async {
     final auth = Provider.of<AuthService>(context, listen: false);
-    final BuildContext localContext = context; // capture context to avoid use_build_context_synchronously lint
+  // Do not capture `context` before async gaps. Use `context` only after mounted checks.
     final name = _name.text.trim();
     final email = _email.text.trim();
     final password = _password.text;
@@ -96,7 +96,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
       // show a dialog with details for easier debugging
       try {
-        await showDialog<void>(context: localContext, builder: (ctx) {
+        await showDialog<void>(context: context, builder: (ctx) {
           return AlertDialog(
             title: Text('Lỗi server ($status)'),
             content: SingleChildScrollView(child: Text(body.toString())),
@@ -106,7 +106,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       } catch (_) {}
     }
     if ((status == 200 || status == 201) && body['access'] != null) {
-      Navigator.of(localContext).pushReplacementNamed(Routes.home);
+      if (!mounted) return;
+      Navigator.of(context).pushReplacementNamed(Routes.home);
       return;
     }
 
@@ -124,7 +125,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       });
       // show non-field error as SnackBar or alert
       if (_errors['non_field'] != null && _errors['non_field']!.isNotEmpty) {
-        if (mounted) ScaffoldMessenger.of(localContext).showSnackBar(SnackBar(content: Text(_errors['non_field']!)));
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_errors['non_field']!)));
       }
       // focus first field that has an error
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -134,7 +135,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       setState(() {
         _errors['non_field'] = 'Đăng ký thất bại — kiểm tra thông tin';
       });
-      if (mounted) ScaffoldMessenger.of(localContext).showSnackBar(const SnackBar(content: Text('Đăng ký thất bại — kiểm tra thông tin')));
+  if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đăng ký thất bại — kiểm tra thông tin')));
     }
   }
 
