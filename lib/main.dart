@@ -15,11 +15,11 @@ import 'src/services/auth_api.dart';
 import 'src/services/auth_repository.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const EventConnectApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class EventConnectApp extends StatelessWidget {
+  const EventConnectApp({super.key});
 
   @override
   Widget build(BuildContext context) {
