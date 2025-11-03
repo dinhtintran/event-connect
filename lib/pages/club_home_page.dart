@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'club_events_page.dart';
 
 class ClubHomePage extends StatefulWidget {
-  const ClubHomePage({Key? key}) : super(key: key);
+  const ClubHomePage({super.key});
 
   @override
   State<ClubHomePage> createState() => _ClubHomePageState();
@@ -97,7 +97,7 @@ class _ClubHomePageState extends State<ClubHomePage> {
                       borderRadius: BorderRadius.circular(12),
                       gradient: LinearGradient(
                         colors: [
-                          Colors.black.withOpacity(0.45),
+                          Colors.black.withAlpha((0.45 * 255).round()),
                           Colors.transparent
                         ],
                         begin: Alignment.bottomLeft,
@@ -261,7 +261,7 @@ class _EventCard extends StatelessWidget {
   final VoidCallback onEdit;
 
   const _EventCard({
-    Key? key,
+    super.key,
     required this.title,
     required this.status,
     required this.registered,
@@ -270,7 +270,7 @@ class _EventCard extends StatelessWidget {
     required this.onManage,
     required this.onRegister,
     required this.onEdit,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -371,13 +371,13 @@ class _NotificationTile extends StatelessWidget {
   final VoidCallback onTap;
 
   const _NotificationTile({
-    Key? key,
+    super.key,
     required this.title,
     required this.subtitle,
     required this.icon,
     required this.accent,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -398,7 +398,7 @@ class _NotificationTile extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 18,
-              backgroundColor: accent.withOpacity(0.12),
+              backgroundColor: accent.withAlpha((0.12 * 255).round()),
               child: Icon(icon, color: accent, size: 18),
             ),
             const SizedBox(width: 12),
