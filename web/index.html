@@ -10,9 +10,6 @@
 
     For more details:
     * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
   -->
   <base href="$FLUTTER_BASE_HREF">
 
@@ -31,8 +28,52 @@
 
   <title>event_connect</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- ✅ Thêm SDK Firebase (Web version) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    // ✅ Cấu hình Firebase của Nhi (copy từ Firebase Console)
+    const firebaseConfig = {
+      apiKey: "AIzaSyA6QVAe6TRaCJz9TNTW475N1XZU65dG28M",
+      authDomain: "eventconnect-a62ad.firebaseapp.com",
+      projectId: "eventconnect-a62ad",
+      storageBucket: "eventconnect-a62ad.appspot.com",
+      messagingSenderId: "638027325119",
+      appId: "1:638027325119:web:434c0277ddc4d8c8abf00a",
+      measurementId: "G-PQCFJ3T5C3"
+    };
+
+    // ✅ Khởi tạo Firebase trước khi Flutter chạy
+    firebase.initializeApp(firebaseConfig);
+  </script>
 </head>
+
 <body>
-  <script src="flutter_bootstrap.js" async></script>
+<!-- Firebase SDK -->
+<script type="module">
+  // Import Firebase
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-analytics.js";
+
+  // Your web app's Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyA6QVAe6TRaCJz9TNTW475N1XZU65dG28M",
+    authDomain: "eventconnect-a62ad.firebaseapp.com",
+    projectId: "eventconnect-a62ad",
+    storageBucket: "eventconnect-a62ad.firebasestorage.app",
+    messagingSenderId: "638027325119",
+    appId: "1:638027325119:web:434c0277ddc4d8c8abf00a",
+    measurementId: "G-PQCFJ3T5C3"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+</script>
+
+<script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

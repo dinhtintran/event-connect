@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'club_home_page.dart';
+import 'create_event/create_event_step1_basic.dart';
 
 class ClubEventsPage extends StatefulWidget {
   const ClubEventsPage({super.key});
@@ -181,8 +182,14 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
             SizedBox(
               width: double.infinity,
               height: 50,
-              child: ElevatedButton.icon(
-                onPressed: () {},
+              child:
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const CreateEventStep1Page()),
+                  );
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.indigo,
                   shape: RoundedRectangleBorder(
@@ -196,6 +203,7 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
                   style: TextStyle(fontSize: 16, color: Colors.white),
                 ),
               ),
+
             ),
             const SizedBox(height: 80),
           ],
