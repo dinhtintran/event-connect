@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../models/event.dart';
 import '../../widgets/approval/approval_event_card.dart';
 import '../../dialogs/approval_dialog.dart';
+import '../../src/auth/auth_service.dart';
 
 class ApprovalScreen extends StatefulWidget {
   const ApprovalScreen({super.key});
@@ -178,6 +180,42 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Authorization guard: only allow authenticated users with role 'school'
+    final auth = Provider.of<AuthService>(context);
+    final role = auth.user?.profile.role;
+    if (!auth.isAuthenticated || role != 'school') {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          title: const Text('Phê duyệt sự kiện', style: TextStyle(color: Colors.black)),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.lock_outline, size: 72, color: Colors.grey[400]),
+                const SizedBox(height: 16),
+                const Text('Bạn không có quyền truy cập trang này.', textAlign: TextAlign.center, style: TextStyle(fontSize: 16)),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: () {
+                    if (auth.isAuthenticated) {
+                      Navigator.of(context).pushReplacementNamed('/home');
+                    } else {
+                      Navigator.of(context).pushReplacementNamed('/login');
+                    }
+                  },
+                  child: const Text('Quay lại'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
