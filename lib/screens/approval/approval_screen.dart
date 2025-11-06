@@ -16,7 +16,7 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
   // Sample pending events data
   final List<Event> _pendingEvents = [
     Event(
-      id: 1,
+      id: '1',
       title: 'Hội thảo AI: Tương lai công nghệ',
       clubName: 'CLB Công nghệ',
       clubId: '1',
@@ -34,7 +34,7 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
       updatedAt: DateTime.now(),
     ),
     Event(
-      id: 2,
+      id: '2',
       title: 'Workshop tư duy thiết kế',
       clubName: 'Học viện Thiết kế',
       clubId: '2',
