@@ -59,11 +59,20 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
             onPressed: () {},
             icon: const Icon(Icons.notifications_none, color: Colors.black),
           ),
-          const Padding(
-            padding: EdgeInsets.only(right: 16),
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
             child: CircleAvatar(
               radius: 16,
-              backgroundImage: AssetImage('assets/images/beongnho2.jpg'),
+              backgroundColor: Colors.grey.shade200,
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/images/beongnho2.jpg',
+                  width: 32,
+                  height: 32,
+                  fit: BoxFit.cover,
+                  errorBuilder: (ctx, err, st) => Icon(Icons.person, size: 18, color: Colors.grey.shade600),
+                ),
+              ),
             ),
           ),
         ],
@@ -72,9 +81,14 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
       // Nội dung trang
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+        child: SizedBox(
+          // Constrain the column to the viewport width to avoid horizontal
+          // overflow / "BoxConstraints forces an infinite width" errors when
+          // widgets inside try to use infinite width.
+          width: MediaQuery.of(context).size.width,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             // 🔍 Ô tìm kiếm
             Container(
               height: 45,
@@ -83,7 +97,7 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
                 borderRadius: BorderRadius.circular(12),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: const Row(
+              child: Row(
                 children: [
                   Icon(Icons.search, color: Colors.grey, size: 20),
                   SizedBox(width: 8),
@@ -121,20 +135,24 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                OutlinedButton.icon(
-                  onPressed: () {},
-                  style: OutlinedButton.styleFrom(
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    side: const BorderSide(color: Colors.grey),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
-                  ),
-                  icon: const Icon(Icons.filter_list,
-                      color: Colors.black, size: 18),
-                  label: const Text(
-                    'Bộ lọc',
-                    style: TextStyle(color: Colors.black, fontSize: 14),
+                // Allow the filter button to shrink if space is tight
+                Flexible(
+                  child: OutlinedButton.icon(
+                    onPressed: () {},
+                    style: OutlinedButton.styleFrom(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      side: const BorderSide(color: Colors.grey),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                    icon: const Icon(Icons.filter_list,
+                        color: Colors.black, size: 18),
+                    label: const Text(
+                      'Bộ lọc',
+                      style: TextStyle(color: Colors.black, fontSize: 14),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
                 Row(
@@ -200,6 +218,7 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
             const SizedBox(height: 80),
           ],
         ),
+      ),
       ),
 
       // Bottom Navigation Bar
@@ -293,12 +312,19 @@ class EventCard extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(16)),
-                child: Image.asset(
-                  image,
+                    const BorderRadius.vertical(top: Radius.circular(16)),
+                child: SizedBox(
                   height: 160,
                   width: double.infinity,
-                  fit: BoxFit.cover,
+                  child: Image.asset(
+                    image,
+                    fit: BoxFit.cover,
+                    errorBuilder: (ctx, err, st) => Container(
+                      height: 160,
+                      width: double.infinity,
+                      color: Colors.grey.shade300,
+                    ),
+                  ),
                 ),
               ),
               Positioned(
@@ -369,39 +395,45 @@ class EventCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    OutlinedButton(
-                      onPressed: () {},
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.black,
-                        side: const BorderSide(color: Colors.grey),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
-                      ),
-                      child: const Text('Chi tiết'),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      onPressed: () {},
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.indigo,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                // Use Wrap so action buttons can wrap to the next line on
+                // narrow screens instead of causing an overflow.
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    alignment: WrapAlignment.end,
+                    children: [
+                      OutlinedButton(
+                        onPressed: () {},
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.black,
+                          side: const BorderSide(color: Colors.grey),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
                         ),
-                        elevation: 0,
+                        child: const Text('Chi tiết'),
                       ),
-                      child: const Text(
-                        'Quản lý',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
+                      ElevatedButton(
+                        onPressed: () {},
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.indigo,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'Quản lý',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),

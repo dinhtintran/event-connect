@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'club_events_page.dart';
+import '../src/routes.dart';
 
 class ClubHomePage extends StatefulWidget {
   const ClubHomePage({super.key});
@@ -11,32 +11,22 @@ class ClubHomePage extends StatefulWidget {
 class _ClubHomePageState extends State<ClubHomePage> {
   int _selectedIndex = 0; // 0 = Trang chủ
 
-  // Hiệu ứng trượt ngang khi chuyển sang trang khác
-  Route _createSlideRoute(Widget page) {
-    return PageRouteBuilder(
-      pageBuilder: (context, animation, secondaryAnimation) => page,
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        const begin = Offset(1.0, 0.0); // từ bên phải sang
-        const end = Offset.zero;
-        const curve = Curves.easeInOut;
-
-        var tween =
-        Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-
-        return SlideTransition(
-          position: animation.drive(tween),
-          child: child,
-        );
-      },
-    );
-  }
+  // Note: navigation to ClubEventsPage now uses named routes
 
   void _onItemTapped(int index) {
     setState(() => _selectedIndex = index);
 
     // 👉 Nếu bấm tab "Sự kiện" trong bottom nav -> chuyển sang trang ClubEventsPage
     if (index == 1) {
-      Navigator.push(context, _createSlideRoute(const ClubEventsPage()));
+      debugPrint('ClubHomePage: tapping Sự kiện tab -> navigate to ClubEventsPage (named)');
+      try {
+        Navigator.pushNamed(context, Routes.clubEvents);
+      } catch (e, st) {
+        debugPrint('Failed to navigate to ClubEventsPage (named): $e\n$st');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi khi chuyển trang: ${e.toString()}')));
+        }
+      }
     }
   }
 
@@ -64,11 +54,20 @@ class _ClubHomePageState extends State<ClubHomePage> {
             icon: const Icon(Icons.notifications_none, color: Colors.black54),
             onPressed: () {},
           ),
-          const Padding(
-            padding: EdgeInsets.only(right: 12.0),
+          Padding(
+            padding: const EdgeInsets.only(right: 12.0),
             child: CircleAvatar(
               radius: 16,
-              backgroundImage: AssetImage('assets/images/beongnho2.jpg'),
+              backgroundColor: Colors.grey.shade200,
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/images/beongnho2.jpg',
+                  width: 32,
+                  height: 32,
+                  fit: BoxFit.cover,
+                  errorBuilder: (ctx, err, st) => Icon(Icons.person, size: 18, color: Colors.grey.shade600),
+                ),
+              ),
             ),
           )
         ],
@@ -82,50 +81,61 @@ class _ClubHomePageState extends State<ClubHomePage> {
               // Banner card
               GestureDetector(
                 onTap: () {},
-                child: Container(
+                child: SizedBox(
                   width: double.infinity,
                   height: 140,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    image: const DecorationImage(
-                      fit: BoxFit.cover,
-                      image: AssetImage('assets/images/background.jpg'),
-                    ),
-                  ),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.black.withAlpha((0.45 * 255).round()),
-                          Colors.transparent
-                        ],
-                        begin: Alignment.bottomLeft,
-                        end: Alignment.topRight,
-                      ),
-                    ),
-                    padding: const EdgeInsets.all(14),
-                    alignment: Alignment.bottomLeft,
-                    child: const Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Chào mừng bạn trở lại, Đội ngũ EventConnect!',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                  child: Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.asset(
+                          'assets/images/background.jpg',
+                          width: double.infinity,
+                          height: 140,
+                          fit: BoxFit.cover,
+                          errorBuilder: (ctx, err, st) => Container(
+                            width: double.infinity,
+                            height: 140,
+                            color: Colors.grey.shade300,
                           ),
                         ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Tổng quan sự kiện của bạn trong nháy mắt.',
-                          style: TextStyle(
-                              color: Colors.white70, fontSize: 12),
+                      ),
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.black.withAlpha((0.45 * 255).round()),
+                              Colors.transparent
+                            ],
+                            begin: Alignment.bottomLeft,
+                            end: Alignment.topRight,
+                          ),
                         ),
-                      ],
-                    ),
+                        padding: const EdgeInsets.all(14),
+                        alignment: Alignment.bottomLeft,
+                        child: const Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Chào mừng bạn trở lại, Đội ngũ EventConnect!',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Tổng quan sự kiện của bạn trong nháy mắt.',
+                              style: TextStyle(
+                                  color: Colors.white70, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -144,10 +154,15 @@ class _ClubHomePageState extends State<ClubHomePage> {
                   GestureDetector(
                     // 👉 Khi bấm "Xem tất cả" -> chuyển sang trang ClubEventsPage (có hiệu ứng trượt)
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        _createSlideRoute(const ClubEventsPage()),
-                      );
+                      debugPrint('ClubHomePage: tapped Xem tất cả -> navigate to ClubEventsPage (named)');
+                      try {
+                        Navigator.pushNamed(context, Routes.clubEvents);
+                      } catch (e, st) {
+                        debugPrint('Failed to navigate to ClubEventsPage (named): $e\n$st');
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi khi chuyển trang: ${e.toString()}')));
+                        }
+                      }
                     },
                     child: Text(
                       'Xem tất cả',

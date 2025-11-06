@@ -7,6 +7,7 @@ import 'src/screens/login_screen.dart';
 import 'src/screens/register_screen.dart';
 import 'screens/main_screen.dart';
 import 'pages/club_home_page.dart';
+import 'pages/club_events_page.dart';
 import 'package:dio/dio.dart';
 import 'src/services/token_storage.dart';
 import 'src/config.dart';
@@ -68,6 +69,7 @@ class EventConnectApp extends StatelessWidget {
           Routes.register: (_) => const RegisterScreen(),
           Routes.home: (_) => const MainScreen(),
           Routes.clubHome: (_) => const ClubHomePage(),
+          Routes.clubEvents: (_) => const ClubEventsPage(),
         },
       ),
     );
