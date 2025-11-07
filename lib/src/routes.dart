@@ -5,4 +5,5 @@ class Routes {
   static const String clubHome = '/club-home';
   static const String clubEvents = '/club-events';
   static const String approval = '/approval';
+  static const String admin = '/admin';
 }

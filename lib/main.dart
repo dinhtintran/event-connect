@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:dio/dio.dart';
 
 import 'src/routes.dart';
 import 'src/auth/auth_service.dart';
@@ -9,7 +10,7 @@ import 'screens/main_screen.dart';
 import 'pages/club_home_page.dart';
 import 'pages/club_events_page.dart';
 import 'screens/approval/approval_screen.dart';
-import 'package:dio/dio.dart';
+import 'screens/admin/admin_home_screen.dart';
 import 'src/services/token_storage.dart';
 import 'src/config.dart';
 import 'src/services/token_interceptor.dart';
@@ -51,7 +52,7 @@ class EventConnectApp extends StatelessWidget {
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: const Color(0xE65C6BF0))),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: const Color(0xE65C6BF0)) ),
           ),
           elevatedButtonTheme: ElevatedButtonThemeData(
             style: ElevatedButton.styleFrom(
@@ -72,6 +73,7 @@ class EventConnectApp extends StatelessWidget {
           Routes.clubHome: (_) => const ClubHomePage(),
           Routes.clubEvents: (_) => const ClubEventsPage(),
           Routes.approval: (_) => const ApprovalScreen(),
+          Routes.admin: (_) => const AdminHomeScreen(),
         },
       ),
     );

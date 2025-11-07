@@ -1,108 +1,122 @@
 class Event {
-  // Core fields (always present)
+  // Use string id to be compatible with both branches (int or string IDs)
   final String id;
   final String title;
-  // "Dev" simplified fields (kept for backward compatibility)
+
+  // optional/general fields
   final String imageUrl;
-  final DateTime date;
+  final DateTime? date;
   final String location;
   final String category;
   final bool isFeatured;
 
-  // "Feature/approval" extended fields
-  final String clubName;
+  // approval/admin-related
+  final String? clubName;
   final String? clubId;
   final String? description;
-  final String locationDetail;
-  final DateTime startAt;
+  final String? locationDetail;
+  final DateTime? startAt;
   final DateTime? endAt;
   final String posterUrl;
   final int capacity;
   final int participantCount;
-  final String? status; // 'pending', 'approved', 'rejected'
-  final String riskLevel; // 'Thấp', 'Trung bình', 'Cao'
+  final String? status;
+  final String? riskLevel;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final String? createdBy;
 
   Event({
     required this.id,
     required this.title,
-    // dev fields (accept nullable inputs and normalize in initializer)
-    String? imageUrl,
-    DateTime? date,
+    this.imageUrl = '',
+    this.date,
     this.location = '',
     this.category = '',
     this.isFeatured = false,
-    // extended fields
-    this.clubName = '',
+    this.clubName,
     this.clubId,
     this.description,
-    String? locationDetail,
-    DateTime? startAt,
+    this.locationDetail,
+    this.startAt,
     this.endAt,
-    String? posterUrl,
+    this.posterUrl = '',
     this.capacity = 0,
     this.participantCount = 0,
     this.status,
-    this.riskLevel = '',
+    this.riskLevel,
     this.createdAt,
     this.updatedAt,
-  })  : imageUrl = imageUrl ?? '',
-        date = date ?? DateTime.now(),
-        locationDetail = locationDetail ?? '',
-        startAt = startAt ?? (date ?? DateTime.now()),
-        posterUrl = posterUrl ?? '';
+    this.createdBy,
+  });
 
-  // Factory to support both legacy/simple and extended JSON shapes
   factory Event.fromJson(Map<String, dynamic> json) {
+    String parseId(dynamic raw) {
+      if (raw == null) return '';
+      return raw is String ? raw : raw.toString();
+    }
+
+    int parseInt(dynamic raw) {
+      if (raw == null) return 0;
+      if (raw is int) return raw;
+      return int.tryParse(raw.toString()) ?? 0;
+    }
+
+    DateTime? parseDate(dynamic raw) {
+      if (raw == null) return null;
+      if (raw is DateTime) return raw;
+      return DateTime.tryParse(raw.toString());
+    }
+
     return Event(
-      id: (json['id'] ?? json['event_id']).toString(),
-      title: json['title'] as String? ?? '',
-      imageUrl: (json['imageUrl'] ?? json['image_url'] ?? json['poster_url']) as String?,
-      date: json['date'] != null ? DateTime.tryParse(json['date'].toString()) : null,
-      location: (json['location'] as String?) ?? '',
-      category: json['category'] as String? ?? '',
-      isFeatured: json['isFeatured'] as bool? ?? false,
-      clubName: json['clubName'] as String? ?? '',
-      clubId: json['clubId']?.toString(),
+      id: parseId(json['id'] ?? json['event_id']),
+      title: (json['title'] ?? '') as String,
+      imageUrl: (json['imageUrl'] ?? json['image_url'] ?? json['poster_url'] ?? '') as String,
+      date: parseDate(json['date']),
+      location: (json['location'] ?? '') as String,
+      category: (json['category'] ?? '') as String,
+      isFeatured: (json['isFeatured'] is bool) ? json['isFeatured'] as bool : false,
+      clubName: json['clubName'] as String?,
+      clubId: json['clubId'] != null ? (json['clubId'] is String ? json['clubId'] as String : json['clubId'].toString()) : null,
       description: json['description'] as String?,
       locationDetail: json['locationDetail'] as String?,
-      startAt: json['startAt'] != null ? DateTime.tryParse(json['startAt'].toString()) : null,
-      endAt: json['endAt'] != null ? DateTime.tryParse(json['endAt'].toString()) : null,
-      posterUrl: (json['poster_url'] ?? json['posterUrl']) as String?,
-  capacity: json['capacity'] is int ? (json['capacity'] as int) : (json['capacity'] != null ? (int.tryParse(json['capacity'].toString()) ?? 0) : 0),
-  participantCount: json['participantCount'] is int ? (json['participantCount'] as int) : (json['participantCount'] != null ? (int.tryParse(json['participantCount'].toString()) ?? 0) : 0),
+      startAt: parseDate(json['startAt']),
+      endAt: parseDate(json['endAt']),
+      posterUrl: (json['poster_url'] ?? json['posterUrl'] ?? '') as String,
+      capacity: parseInt(json['capacity']),
+      participantCount: parseInt(json['participantCount']),
       status: json['status'] as String?,
-      riskLevel: json['riskLevel'] as String? ?? '',
-      createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt'].toString()) : null,
-      updatedAt: json['updatedAt'] != null ? DateTime.tryParse(json['updatedAt'].toString()) : null,
+      riskLevel: json['riskLevel'] as String?,
+      createdAt: parseDate(json['createdAt']),
+      updatedAt: parseDate(json['updatedAt']),
+      createdBy: json['createdBy'] as String?,
     );
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> map = {
+    return {
       'id': id,
       'title': title,
-      'location': location,
-      'isFeatured': isFeatured,
       'imageUrl': imageUrl,
-      'date': date.toIso8601String(),
+      'date': date?.toIso8601String(),
+      'location': location,
       'category': category,
+      'isFeatured': isFeatured,
       'clubName': clubName,
       'clubId': clubId,
       'description': description,
       'locationDetail': locationDetail,
-      'startAt': startAt.toIso8601String(),
+      'startAt': startAt?.toIso8601String(),
       'endAt': endAt?.toIso8601String(),
       'poster_url': posterUrl,
       'capacity': capacity,
       'participantCount': participantCount,
       'status': status,
       'riskLevel': riskLevel,
+      'createdAt': createdAt?.toIso8601String(),
+      'updatedAt': updatedAt?.toIso8601String(),
+      'createdBy': createdBy,
     };
-    if (createdAt != null) map['createdAt'] = createdAt!.toIso8601String();
-    if (updatedAt != null) map['updatedAt'] = updatedAt!.toIso8601String();
-    return map;
   }
 }
 
