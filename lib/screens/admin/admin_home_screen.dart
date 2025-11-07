@@ -5,6 +5,8 @@ import '../../widgets/admin/stat_card.dart';
 import '../../widgets/admin/pending_event_card.dart';
 import '../../widgets/admin/activity_item.dart';
 import '../../widgets/admin/quick_action_button.dart';
+import '../../widgets/app_nav_bar.dart';
+import '../../src/routes.dart';
 
 class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({super.key});
@@ -164,7 +166,25 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     setState(() {
       _selectedIndex = index;
     });
-    // TODO: Navigate to different screens
+    // Navigate to the appropriate screen for admin tabs.
+    // Index mapping (as defined in AppNavBar for school/admin):
+    // 0 -> Dashboard (stay on admin home)
+    // 1 -> Approvals
+    // 2 -> Reports (not implemented)
+    // 3 -> Profile (not implemented)
+    if (index == 1) {
+      // Open the approval screen (replacement so back button doesn't stack multiple admin roots)
+      Navigator.of(context).pushReplacementNamed(Routes.approval);
+      return;
+    }
+    if (index == 0) {
+      // already on admin dashboard
+      return;
+    }
+    // Other tabs: show a temporary placeholder/snackbar until implemented
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Tính năng chưa được triển khai')),
+    );
   }
 
   @override
@@ -311,47 +331,10 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: _onNavigationTapped,
-          type: BottomNavigationBarType.fixed,
-          selectedItemColor: const Color(0xFF6366F1),
-          unselectedItemColor: Colors.grey,
-          selectedFontSize: 12,
-          unselectedFontSize: 12,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home),
-              label: 'Trang Chủ',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.check_circle_outline),
-              activeIcon: Icon(Icons.check_circle),
-              label: 'Phê duyệt',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart_outlined),
-              activeIcon: Icon(Icons.bar_chart),
-              label: 'Báo cáo',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
-              label: 'Hồ Sơ',
-            ),
-          ],
-        ),
+      bottomNavigationBar: AppNavBar(
+        currentIndex: _selectedIndex,
+        onTap: _onNavigationTapped,
+        roleOverride: 'school',
       ),
     );
   }

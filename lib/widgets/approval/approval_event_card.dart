@@ -176,7 +176,7 @@ class ApprovalEventCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: _getRiskColor(event.riskLevel).withOpacity(0.1),
+                        color: _getRiskColor(event.riskLevel).withAlpha(26),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(

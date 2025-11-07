@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'club_home_page.dart';
+import '../widgets/app_nav_bar.dart';
 
 class ClubEventsPage extends StatefulWidget {
   const ClubEventsPage({super.key});
@@ -222,22 +223,10 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
       ),
 
       // Bottom Navigation Bar
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
+      bottomNavigationBar: AppNavBar(
         currentIndex: _selectedIndex,
-        selectedItemColor: const Color(0xFF5568FF),
-        unselectedItemColor: Colors.black54,
-        showUnselectedLabels: true,
         onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Trang Chủ'),
-          BottomNavigationBarItem(icon: Icon(Icons.event), label: 'Sự Kiện'),
-          BottomNavigationBarItem(icon: Icon(Icons.mail_outline), label: 'Thư'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart_outlined), label: 'Thống Kê'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline), label: 'Hồ Sơ'),
-        ],
+        roleOverride: 'club',
       ),
     );
   }

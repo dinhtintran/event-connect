@@ -29,7 +29,7 @@ class PendingEventCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withAlpha(26),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -59,7 +59,7 @@ class PendingEventCard extends StatelessWidget {
                   end: Alignment.bottomCenter,
                   colors: [
                     Colors.transparent,
-                    Colors.black.withOpacity(0.8),
+                    Colors.black.withAlpha(204),
                   ],
                 ),
               ),

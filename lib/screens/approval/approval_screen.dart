@@ -4,6 +4,7 @@ import '../../models/event.dart';
 import '../../widgets/approval/approval_event_card.dart';
 import '../../dialogs/approval_dialog.dart';
 import '../../src/auth/auth_service.dart';
+import '../../widgets/app_nav_bar.dart';
 
 class ApprovalScreen extends StatefulWidget {
   const ApprovalScreen({super.key});
@@ -272,48 +273,10 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
                 );
               },
             ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: _onNavigationTapped,
-          type: BottomNavigationBarType.fixed,
-          selectedItemColor: const Color(0xFF6366F1),
-          unselectedItemColor: Colors.grey,
-          selectedFontSize: 12,
-          unselectedFontSize: 12,
-          backgroundColor: Colors.white,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.dashboard_outlined),
-              activeIcon: Icon(Icons.dashboard),
-              label: 'Bảng điều khiển',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.check_circle_outline),
-              activeIcon: Icon(Icons.check_circle),
-              label: 'Phê duyệt',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart_outlined),
-              activeIcon: Icon(Icons.bar_chart),
-              label: 'Báo cáo',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.settings_outlined),
-              activeIcon: Icon(Icons.settings),
-              label: 'Cài đặt',
-            ),
-          ],
-        ),
+      bottomNavigationBar: AppNavBar(
+        currentIndex: _selectedIndex,
+        onTap: _onNavigationTapped,
+        roleOverride: 'school',
       ),
     );
   }
