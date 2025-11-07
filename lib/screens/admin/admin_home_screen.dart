@@ -19,9 +19,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   // Sample data - should be fetched from API
   final List<Event> _pendingEvents = [
     Event(
-      id: 1,
+      id: '1',
       title: 'Lễ hội âm nhạc mùa hè',
-      clubId: 1,
+      clubId: '1',
       description: 'Summer music festival',
       location: 'Main Hall',
       startAt: DateTime(2024, 7, 15, 18, 0),
@@ -34,9 +34,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       createdBy: '1',
     ),
     Event(
-      id: 2,
+      id: '2',
       title: 'Hội nghị đổi mới công nghệ',
-      clubId: 2,
+      clubId: '2',
       description: 'Technology innovation conference',
       location: 'Conference Center',
       startAt: DateTime(2024, 8, 22, 9, 0),
