@@ -2,20 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:dio/dio.dart';
 
-import 'src/routes.dart';
-import 'src/auth/auth_service.dart';
-import 'src/screens/login_screen.dart';
-import 'src/screens/register_screen.dart';
-import 'screens/main_screen.dart';
-import 'pages/club_home_page.dart';
-import 'pages/club_events_page.dart';
-import 'screens/approval/approval_screen.dart';
-import 'screens/admin/admin_home_screen.dart';
-import 'src/services/token_storage.dart';
-import 'src/config.dart';
-import 'src/services/token_interceptor.dart';
-import 'src/services/auth_api.dart';
-import 'src/services/auth_repository.dart';
+import 'package:event_connect/app_routes.dart';
+import 'package:event_connect/core/config/app_config.dart';
+import 'package:event_connect/core/interceptors/token_interceptor.dart';
+import 'package:event_connect/core/navigation/main_screen.dart';
+import 'package:event_connect/features/authentication/authentication.dart';
+import 'package:event_connect/features/event_creation/event_creation.dart';
+import 'package:event_connect/features/event_approval/event_approval.dart';
+import 'package:event_connect/features/admin_dashboard/admin_dashboard.dart';
 
 void main() {
   runApp(const EventConnectApp());
@@ -27,7 +21,7 @@ class EventConnectApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Prepare Dio + interceptor + repository so AuthService can use API-backed repo
-    final dio = Dio(BaseOptions(baseUrl: apiBaseUrl));
+    final dio = Dio(BaseOptions(baseUrl: AppConfig.apiBaseUrl));
     final tokenStorage = TokenStorage();
     dio.interceptors.add(TokenInterceptor(tokenStorage: tokenStorage));
     final api = AuthApi(dio: dio);
@@ -65,19 +59,18 @@ class EventConnectApp extends StatelessWidget {
           ),
           // cardTheme omitted for SDK compatibility; individual Cards can set shape if needed
         ),
-        initialRoute: Routes.login,
+        initialRoute: AppRoutes.login,
         routes: {
-          Routes.login: (_) => const LoginScreen(),
-          Routes.register: (_) => const RegisterScreen(),
-          Routes.home: (_) => const MainScreen(),
-          Routes.clubHome: (_) => const ClubHomePage(),
-          Routes.clubEvents: (_) => const ClubEventsPage(),
-          Routes.approval: (_) => const ApprovalScreen(),
-          Routes.admin: (_) => const AdminHomeScreen(),
+          AppRoutes.login: (_) => const LoginScreen(),
+          AppRoutes.register: (_) => const RegisterScreen(),
+          AppRoutes.home: (_) => const MainScreen(),
+          AppRoutes.clubHome: (_) => const ClubHomePage(),
+          AppRoutes.clubEvents: (_) => const ClubEventsPage(),
+          AppRoutes.approval: (_) => const ApprovalScreen(),
+          AppRoutes.admin: (_) => const AdminHomeScreen(),
         },
       ),
     );
   }
 }
- 
 
