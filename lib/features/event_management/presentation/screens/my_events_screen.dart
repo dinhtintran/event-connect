@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:event_connect/features/event_management/domain/models/event.dart';
+import 'package:event_connect/features/event_management/data/api/event_api.dart';
 import 'package:event_connect/features/event_management/domain/services/event_service.dart';
 import 'package:event_connect/features/event_management/presentation/screens/event_detail_screen.dart';
+import 'package:event_connect/app_routes.dart';
 
 class MyEventsScreen extends StatefulWidget {
   const MyEventsScreen({super.key});
@@ -14,8 +17,15 @@ class MyEventsScreen extends StatefulWidget {
 
 class _MyEventsScreenState extends State<MyEventsScreen>
     with SingleTickerProviderStateMixin {
+  final _eventApi = EventApi();
+  final _storage = const FlutterSecureStorage();
   late TabController _tabController;
   final TextEditingController searchController = TextEditingController();
+
+  // API data
+  List<Event> _allRegisteredEvents = [];
+  bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -67,14 +77,10 @@ class _MyEventsScreenState extends State<MyEventsScreen>
             ? const Center(child: CircularProgressIndicator())
             : Column(
           children: [
-            // Header
             _buildHeader(),
-            // Search Bar
             _buildSearchBar(),
             const SizedBox(height: 16),
-            // Tabs
             _buildTabs(),
-            // Content
             Expanded(
               child: RefreshIndicator(
                 onRefresh: () => context.read<EventService>().loadMyRegisteredEvents(),
@@ -110,19 +116,29 @@ class _MyEventsScreenState extends State<MyEventsScreen>
           ),
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
+              GestureDetector(
+                onTap: () {
+                  Navigator.pushNamed(context, AppRoutes.notifications);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.notifications_outlined, size: 24),
                 ),
-                child: const Icon(Icons.notifications_outlined, size: 24),
               ),
               const SizedBox(width: 12),
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: Colors.grey.shade200,
-                child: const Icon(Icons.person, color: Colors.grey),
+              GestureDetector(
+                onTap: () {
+                  Navigator.pushNamed(context, AppRoutes.profile);
+                },
+                child: CircleAvatar(
+                  radius: 20,
+                  backgroundColor: Colors.grey.shade200,
+                  child: const Icon(Icons.person, color: Colors.grey),
+                ),
               ),
             ],
           ),
@@ -152,8 +168,22 @@ class _MyEventsScreenState extends State<MyEventsScreen>
                   border: InputBorder.none,
                   hintStyle: TextStyle(color: Colors.grey),
                 ),
+                onChanged: (value) {
+                  setState(() {}); // Rebuild to apply search filter
+                },
               ),
             ),
+            if (searchController.text.isNotEmpty)
+              IconButton(
+                icon: const Icon(Icons.clear, color: Colors.grey, size: 20),
+                onPressed: () {
+                  setState(() {
+                    searchController.clear();
+                  });
+                },
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
           ],
         ),
       ),
@@ -208,48 +238,60 @@ class _MyEventsScreenState extends State<MyEventsScreen>
   Widget _buildEventsList(List<Event> events,
       {required bool isUpcoming, bool isSaved = false}) {
     if (events.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.event_busy,
-              size: 64,
-              color: Colors.grey.shade300,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Không có sự kiện nào',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey.shade600,
+      return RefreshIndicator(
+        onRefresh: _loadEvents,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height * 0.5,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.event_busy,
+                    size: 64,
+                    color: Colors.grey.shade300,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Không có sự kiện nào',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(20),
-      itemCount: events.length,
-      itemBuilder: (context, index) {
-        return GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => EventDetailScreen(event: events[index]),
-              ),
-            );
-          },
-          child: MyEventCard(
-            event: events[index],
-            isUpcoming: isUpcoming,
-            isSaved: isSaved,
-          ),
-        );
-      },
+    return RefreshIndicator(
+      onRefresh: _loadEvents,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(20),
+        itemCount: events.length,
+        itemBuilder: (context, index) {
+          return GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EventDetailScreen(event: events[index]),
+                ),
+              );
+            },
+            child: MyEventCard(
+              event: events[index],
+              isUpcoming: isUpcoming,
+              isSaved: isSaved,
+            ),
+          );
+        },
+      ),
     );
   }
 }

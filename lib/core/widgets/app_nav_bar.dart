@@ -15,13 +15,13 @@ class AppNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthService>(context, listen: false);
-    final role = roleOverride ?? auth.user?.profile.role ?? 'student';
+    final role = roleOverride ?? auth.user?.role ?? 'student';
 
     List<BottomNavigationBarItem> items;
     Color selectedColor = const Color(0xFF5669FF);
 
-    if (role == 'school' || role == 'system_admin' || role == 'admin') {
-      // School / system admin navigation
+    if (role == 'system_admin') {
+      // System admin navigation
       items = const [
         BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Trang Chủ'),
         BottomNavigationBarItem(icon: Icon(Icons.check_circle_outline), activeIcon: Icon(Icons.check_circle), label: 'Phê duyệt'),
@@ -30,6 +30,7 @@ class AppNavBar extends StatelessWidget {
       ];
       selectedColor = const Color(0xFF6366F1);
     } else if (role == 'club_admin') {
+      // Club admin navigation
       // Club navigation
       items = const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Trang Chủ'),

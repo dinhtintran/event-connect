@@ -125,47 +125,34 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   void _handleApproveEvent(Event event) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Phê duyệt sự kiện'),
-        content: Text('Bạn có chắc chắn muốn phê duyệt sự kiện "${event.title}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Hủy'),
+      builder: (context) =>
+          AlertDialog(
+            title: const Text('Phê duyệt sự kiện'),
+            content: Text(
+                'Bạn có chắc chắn muốn phê duyệt sự kiện "${event.title}"?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Hủy'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  // TODO: Call API to approve event
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Đã phê duyệt sự kiện "${event.title}"'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                ),
+                child: const Text('Phê duyệt'),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              
-              final adminService = Provider.of<AdminService>(context, listen: false);
-              final success = await adminService.approveEvent(event.id);
-              
-              if (success && mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Đã phê duyệt sự kiện "${event.title}"'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-                // Reload pending events
-                _loadPendingEvents();
-                _loadData();
-              } else if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Không thể phê duyệt sự kiện. Vui lòng thử lại.'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-            ),
-            child: const Text('Phê duyệt'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -174,74 +161,48 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Từ chối sự kiện'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Bạn có chắc chắn muốn từ chối sự kiện "${event.title}"?'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: reasonController,
-              decoration: const InputDecoration(
-                labelText: 'Lý do từ chối',
-                border: OutlineInputBorder(),
-                hintText: 'Nhập lý do từ chối...',
+      builder: (context) =>
+          AlertDialog(
+            title: const Text('Từ chối sự kiện'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Bạn có chắc chắn muốn từ chối sự kiện "${event.title}"?'),
+                const SizedBox(height: 16),
+                const TextField(
+                  decoration: InputDecoration(
+                    labelText: 'Lý do từ chối',
+                    border: OutlineInputBorder(),
+                    hintText: 'Nhập lý do từ chối...',
+                  ),
+                  maxLines: 3,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Hủy'),
               ),
-              maxLines: 3,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Hủy'),
+              ElevatedButton(
+                onPressed: () {
+                  // TODO: Call API to reject event
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Đã từ chối sự kiện "${event.title}"'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                ),
+                child: const Text('Từ chối'),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () async {
-              final reason = reasonController.text.trim();
-              if (reason.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Vui lòng nhập lý do từ chối'),
-                    backgroundColor: Colors.orange,
-                  ),
-                );
-                return;
-              }
-              
-              Navigator.pop(context);
-              
-              final adminService = Provider.of<AdminService>(context, listen: false);
-              final success = await adminService.rejectEvent(event.id, reason: reason);
-              
-              if (success && mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Đã từ chối sự kiện "${event.title}"'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-                // Reload pending events
-                _loadPendingEvents();
-                _loadData();
-              } else if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Không thể từ chối sự kiện. Vui lòng thử lại.'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
-            child: const Text('Từ chối'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -250,24 +211,26 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       _selectedIndex = index;
     });
     // Navigate to the appropriate screen for admin tabs.
-    // Index mapping (as defined in AppNavBar for school/admin):
+    // Index mapping (as defined in AppNavBar for system_admin):
     // 0 -> Dashboard (stay on admin home)
     // 1 -> Approvals
     // 2 -> Reports (not implemented)
-    // 3 -> Profile (not implemented)
+    // 3 -> Profile
     if (index == 1) {
-      // Open the approval screen (replacement so back button doesn't stack multiple admin roots)
+      // Open the approval screen
       Navigator.of(context).pushReplacementNamed(AppRoutes.approval);
+      return;
+    }
+    if (index == 3) {
+      // Open profile screen
+      Navigator.of(context).pushNamed(AppRoutes.profile);
       return;
     }
     if (index == 0) {
       // already on admin dashboard
       return;
     }
-    // Other tabs: show a temporary placeholder/snackbar until implemented
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Tính năng chưa được triển khai')),
-    );
+    // For reports or other tabs, do nothing for now
   }
 
   @override
@@ -465,4 +428,3 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     );
   }
 }
-

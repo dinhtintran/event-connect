@@ -4,6 +4,7 @@ import 'package:event_connect/features/event_management/domain/models/event.dart
 import 'package:event_connect/features/event_management/domain/services/event_service.dart';
 import 'package:event_connect/features/event_management/presentation/widgets/category_chip.dart';
 import 'package:event_connect/features/event_management/presentation/screens/event_detail_screen.dart';
+import 'package:event_connect/app_routes.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -13,10 +14,12 @@ class ExploreScreen extends StatefulWidget {
 }
 
 class _ExploreScreenState extends State<ExploreScreen> {
+  final _eventApi = EventApi();
+
   String selectedCategory = 'Tất cả';
   final TextEditingController searchController = TextEditingController();
   bool isGridView = true;
-  int displayedEventsCount = 4; // Hiển thị 4 sự kiện ban đầu
+  int displayedEventsCount = 4;
   bool isLoadingMore = false;
   
   // Filter states
@@ -91,37 +94,53 @@ class _ExploreScreenState extends State<ExploreScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Header
             _buildHeader(),
-            // Search Bar
             _buildSearchBar(),
             const SizedBox(height: 20),
-            // Category Section
             _buildCategorySection(),
             const SizedBox(height: 16),
-            // Filter and View Toggle
             _buildFilterBar(),
             const SizedBox(height: 16),
-            // Events Grid/List
             Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    if (isGridView)
-                      _buildGridView()
-                    else
-                      _buildListView(),
-                    // Load More Button
-                    if (hasMoreEvents) ...[
-                      Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: _buildLoadMoreButton(),
-                      ),
-                    ],
-                    const SizedBox(height: 80),
-                  ],
-                ),
-              ),
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _errorMessage != null
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                              const SizedBox(height: 16),
+                              Text(_errorMessage!),
+                              const SizedBox(height: 16),
+                              ElevatedButton.icon(
+                                onPressed: _loadEvents,
+                                icon: const Icon(Icons.refresh),
+                                label: const Text('Thử lại'),
+                              ),
+                            ],
+                          ),
+                        )
+                      : RefreshIndicator(
+                          onRefresh: _loadEvents,
+                          child: SingleChildScrollView(
+                            child: Column(
+                              children: [
+                                if (isGridView)
+                                  _buildGridView()
+                                else
+                                  _buildListView(),
+                                if (hasMoreEvents) ...[
+                                  Padding(
+                                    padding: const EdgeInsets.all(20),
+                                    child: _buildLoadMoreButton(),
+                                  ),
+                                ],
+                                const SizedBox(height: 80),
+                              ],
+                            ),
+                          ),
+                        ),
             ),
           ],
         ),
@@ -145,19 +164,29 @@ class _ExploreScreenState extends State<ExploreScreen> {
           ),
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
+              GestureDetector(
+                onTap: () {
+                  Navigator.pushNamed(context, AppRoutes.notifications);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.notifications_outlined, size: 24),
                 ),
-                child: const Icon(Icons.notifications_outlined, size: 24),
               ),
               const SizedBox(width: 12),
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: Colors.grey.shade200,
-                child: const Icon(Icons.person, color: Colors.grey),
+              GestureDetector(
+                onTap: () {
+                  Navigator.pushNamed(context, AppRoutes.profile);
+                },
+                child: CircleAvatar(
+                  radius: 20,
+                  backgroundColor: Colors.grey.shade200,
+                  child: const Icon(Icons.person, color: Colors.grey),
+                ),
               ),
             ],
           ),
@@ -201,6 +230,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   Widget _buildCategorySection() {
+    final categories = ['Tất cả', 'Âm nhạc', 'Công nghệ', 'Nghệ thuật', 'Thể thao'];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -232,7 +263,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   onTap: () {
                     setState(() {
                       selectedCategory = category;
-                      displayedEventsCount = 4; // Reset khi đổi category
+                      displayedEventsCount = 4;
                     });
                     context.read<EventService>().setCategory(category);
                   },
@@ -817,12 +848,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
       contentPadding: EdgeInsets.zero,
       controlAffinity: ListTileControlAffinity.leading,
     );
-  }
-
-  @override
-  void dispose() {
-    searchController.dispose();
-    super.dispose();
   }
 }
 

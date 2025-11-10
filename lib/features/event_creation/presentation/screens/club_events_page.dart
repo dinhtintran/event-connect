@@ -231,9 +231,19 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
   void _onItemTapped(int index) {
     setState(() => _selectedIndex = index);
 
+    // Navigation based on index:
+    // 0 -> Trang Chủ
+    // 1 -> Sự kiện (current page)
+    // 2 -> Thư
+    // 3 -> Thống Kê
+    // 4 -> Hồ Sơ
+
     if (index == 0) {
-      // Khi bấm Trang chủ, trượt ngược từ phải qua trái
+      // Go back to Club Home Page
       Navigator.push(context, _createSlideBackRoute(const ClubHomePage()));
+    } else if (index == 4) {
+      // Navigate to Profile
+      Navigator.pushNamed(context, AppRoutes.profile);
     }
   }
 

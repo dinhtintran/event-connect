@@ -10,6 +10,8 @@ import 'package:event_connect/features/authentication/authentication.dart';
 import 'package:event_connect/features/event_creation/event_creation.dart';
 import 'package:event_connect/features/event_approval/event_approval.dart';
 import 'package:event_connect/features/admin_dashboard/admin_dashboard.dart';
+import 'package:event_connect/features/profile/presentation/screens/profile_screen.dart';
+import 'package:event_connect/features/notifications/presentation/screens/notifications_screen.dart';
 import 'package:event_connect/features/event_management/data/api/event_api.dart';
 import 'package:event_connect/features/event_management/data/repositories/event_repository.dart';
 import 'package:event_connect/features/event_management/domain/services/event_service.dart';
@@ -78,6 +80,8 @@ class EventConnectApp extends StatelessWidget {
           AppRoutes.clubEvents: (_) => const ClubEventsPage(),
           AppRoutes.approval: (_) => const ApprovalScreen(),
           AppRoutes.admin: (_) => const AdminHomeScreen(),
+          AppRoutes.profile: (_) => const ProfileScreen(),
+          AppRoutes.notifications: (_) => const NotificationsScreen(),
         },
       ),
     );

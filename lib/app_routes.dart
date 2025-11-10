@@ -8,5 +8,7 @@ class AppRoutes {
   static const String clubEvents = '/club-events';
   static const String approval = '/approval';
   static const String admin = '/admin';
+  static const String profile = '/profile';
+  static const String notifications = '/notifications';
 }
 

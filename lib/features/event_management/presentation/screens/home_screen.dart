@@ -5,6 +5,7 @@ import 'package:event_connect/features/event_management/domain/services/event_se
 import 'package:event_connect/features/event_management/presentation/widgets/category_chip.dart';
 import 'package:event_connect/features/event_management/presentation/widgets/event_card_large.dart';
 import 'package:event_connect/features/event_management/presentation/widgets/event_list_item.dart';
+import 'package:event_connect/app_routes.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -14,9 +15,11 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final _eventApi = EventApi();
+
   String selectedCategory = 'Tất cả';
   final TextEditingController searchController = TextEditingController();
-  int displayedUpcomingEventsCount = 3; // Hiển thị 3 sự kiện ban đầu
+  int displayedUpcomingEventsCount = 3;
   bool isLoadingMore = false;
 
   @override
@@ -57,10 +60,9 @@ class _HomeScreenState extends State<HomeScreen> {
       isLoadingMore = true;
     });
 
-    // Giả lập việc tải dữ liệu từ server
     Future.delayed(const Duration(milliseconds: 500), () {
       setState(() {
-        displayedUpcomingEventsCount += 3; // Tải thêm 3 sự kiện mỗi lần
+        displayedUpcomingEventsCount += 3;
         isLoadingMore = false;
       });
     });
@@ -78,9 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ? const Center(child: CircularProgressIndicator())
             : Column(
           children: [
-            // Header
             _buildHeader(),
-            // Content
             Expanded(
               child: RefreshIndicator(
                 onRefresh: _loadInitialData,
@@ -189,19 +189,29 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
+              GestureDetector(
+                onTap: () {
+                  Navigator.pushNamed(context, AppRoutes.notifications);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.notifications_outlined, size: 24),
                 ),
-                child: const Icon(Icons.notifications_outlined, size: 24),
               ),
               const SizedBox(width: 12),
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: Colors.grey.shade200,
-                child: const Icon(Icons.person, color: Colors.grey),
+              GestureDetector(
+                onTap: () {
+                  Navigator.pushNamed(context, AppRoutes.profile);
+                },
+                child: CircleAvatar(
+                  radius: 20,
+                  backgroundColor: Colors.grey.shade200,
+                  child: const Icon(Icons.person, color: Colors.grey),
+                ),
               ),
             ],
           ),
@@ -251,7 +261,7 @@ class _HomeScreenState extends State<HomeScreen> {
         itemBuilder: (context, index) {
           final category = EventService.categories[index];
           IconData? icon;
-          
+
           switch (category) {
             case 'Tất cả':
               icon = Icons.apps;
@@ -301,7 +311,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Text(
             title,
             style: const TextStyle(
-              fontSize: 20,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
               color: Color(0xFF120D26),
             ),
@@ -314,49 +324,18 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildLoadMoreButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton(
-        onPressed: isLoadingMore ? null : _loadMoreEvents,
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          side: const BorderSide(color: Color(0xFF5669FF), width: 1.5),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          foregroundColor: const Color(0xFF5669FF),
+    return isLoadingMore
+        ? const Center(child: CircularProgressIndicator())
+        : OutlinedButton(
+      onPressed: _loadMoreEvents,
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 32),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
         ),
-        child: isLoadingMore
-            ? const SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF5669FF)),
-                ),
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.add, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Tải thêm sự kiện (${allUpcomingEvents.length - displayedUpcomingEventsCount})',
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
       ),
+      child: const Text('Xem thêm'),
     );
-  }
-
-  @override
-  void dispose() {
-    searchController.dispose();
-    super.dispose();
   }
 }
 

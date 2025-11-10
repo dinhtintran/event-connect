@@ -290,30 +290,28 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
     setState(() {
       _selectedIndex = index;
     });
-    // Navigate to the appropriate screen for admin tabs.
-    // Index mapping (as defined in AppNavBar for system_admin):
-    // 0 -> Dashboard (admin home)
-    // 1 -> Approvals (stay on approval screen)
-    // 2 -> Reports (not implemented)
-    // 3 -> Profile (not implemented)
+    // Navigate based on index
+    // 0 -> Admin Dashboard
+    // 1 -> Approval (current screen)
+    // 2 -> Reports
+    // 3 -> Profile
     if (index == 0) {
-      // Navigate back to admin home
       Navigator.of(context).pushReplacementNamed(AppRoutes.admin);
       return;
     }
-    if (index == 1) {
-      // Already on approval screen, do nothing
+    if (index == 3) {
+      Navigator.of(context).pushNamed(AppRoutes.profile);
       return;
     }
-    // TODO: Implement navigation for Reports (index 2) and Profile (index 3)
+    // For other tabs, stay on current screen
   }
 
   @override
   Widget build(BuildContext context) {
-    // Authorization guard: only allow authenticated users with role 'school' or 'system_admin'
+    // Authorization guard: only allow system admins
     final auth = Provider.of<AuthService>(context);
-    final role = auth.user?.profile.role;
-    if (!auth.isAuthenticated || (role != 'system_admin' && role != 'admin')) {
+    final role = auth.user?.role;
+    if (!auth.isAuthenticated || role != 'system_admin') {
       return Scaffold(
         appBar: AppBar(
           backgroundColor: Colors.white,

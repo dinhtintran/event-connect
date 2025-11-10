@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:event_connect/features/event_management/presentation/screens/home_screen.dart';
 import 'package:event_connect/features/event_management/presentation/screens/my_events_screen.dart';
 import 'package:event_connect/features/event_management/presentation/screens/explore_screen.dart';
+import 'package:event_connect/features/profile/presentation/screens/profile_screen.dart';
 import 'package:event_connect/core/widgets/app_nav_bar.dart';
 
 /// Main screen that hosts the bottom navigation bar for student users.
@@ -20,7 +21,7 @@ class _MainScreenState extends State<MainScreen> {
     const HomeScreen(),
     const ExploreScreen(),
     const MyEventsScreen(),
-    const PlaceholderScreen(title: 'Hồ sơ'),
+    const ProfileScreen(),
   ];
 
   @override
@@ -38,24 +39,4 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
-class PlaceholderScreen extends StatelessWidget {
-  final String title;
-
-  const PlaceholderScreen({super.key, required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Text(
-          title,
-          style: const TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
-}
 
