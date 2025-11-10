@@ -38,7 +38,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     # Local apps
-    'event_connect_backend.accounts',
+    'accounts',
+    'clubs',
+    'event_management',
+    'notifications',
     # CORS
     'corsheaders',
     # Third-party
@@ -87,7 +90,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'event_connect',
         'USER': 'root',
-        'PASSWORD': '',
+        'PASSWORD': 'Tvds@2312003',
         'HOST': 'localhost',
         'PORT': '3306',
         'OPTIONS': {
@@ -166,3 +169,10 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Custom User Model
+AUTH_USER_MODEL = 'accounts.User'
+
+# Media files (uploaded files)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'

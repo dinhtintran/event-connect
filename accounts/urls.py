@@ -13,3 +13,4 @@ urlpatterns = [
     path('logout/', views.LogoutAPIView.as_view(), name='logout'),
     path('me/', views.MeAPIView.as_view(), name='me'),
 ]
+

@@ -5,8 +5,7 @@ from rest_framework.permissions import AllowAny
 
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from django.contrib.auth.models import User
-
+from .models import User
 from .serializers import UserSerializer, RegisterSerializer
 
 
@@ -52,3 +51,4 @@ class LogoutAPIView(APIView):
                 return Response({'ok': False, 'error': 'Invalid refresh token'}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({'ok': True})
+

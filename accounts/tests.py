@@ -24,3 +24,4 @@ class AccountsTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertTrue(data.get('ok'))
+
