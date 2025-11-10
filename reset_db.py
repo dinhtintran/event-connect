@@ -13,11 +13,11 @@ def reset_database():
     print("🔥 Đang reset database...")
     
     with connection.cursor() as cursor:
-        # Disable foreign key checks
-        cursor.execute('SET FOREIGN_KEY_CHECKS=0;')
+        # Disable foreign key checks (SQLite syntax)
+        cursor.execute('PRAGMA foreign_keys = OFF;')
         
-        # Get all tables
-        cursor.execute('SHOW TABLES;')
+        # Get all tables (SQLite syntax)
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';")
         tables = cursor.fetchall()
         
         print(f"\n📋 Tìm thấy {len(tables)} bảng")
@@ -26,10 +26,10 @@ def reset_database():
         for table in tables:
             table_name = table[0]
             print(f"  ❌ Xóa bảng: {table_name}")
-            cursor.execute(f'DROP TABLE IF EXISTS `{table_name}`;')
+            cursor.execute(f'DROP TABLE IF EXISTS "{table_name}";')
         
-        # Enable foreign key checks
-        cursor.execute('SET FOREIGN_KEY_CHECKS=1;')
+        # Enable foreign key checks (SQLite syntax)
+        cursor.execute('PRAGMA foreign_keys = ON;')
         
         print("\n✅ Database đã được làm sạch!")
         print("\n📝 Tiếp theo:")

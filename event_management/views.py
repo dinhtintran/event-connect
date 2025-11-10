@@ -425,13 +425,26 @@ class EventApprovalViewSet(viewsets.ReadOnlyModelViewSet):
         event.save(update_fields=['status', 'approved_at'])
         
         # Create notification
-        from notifications.models import Notification
+        from notifications.models import Notification, ActivityLog
         Notification.objects.create(
             user=event.created_by,
             type='event_approved',
             title='Sự kiện được phê duyệt',
             message=f'Sự kiện "{event.title}" đã được phê duyệt',
             event=event
+        )
+        
+        # Log activity
+        ActivityLog.objects.create(
+            user=request.user,
+            action='event_approved',
+            description=f'Approved event: {event.title}',
+            metadata={
+                'event_id': event.id,
+                'event_title': event.title,
+                'club_id': event.club.id if event.club else None,
+                'club_name': event.club.name if event.club else None
+            }
         )
         
         return Response({
@@ -466,13 +479,27 @@ class EventApprovalViewSet(viewsets.ReadOnlyModelViewSet):
         event.save(update_fields=['status'])
         
         # Create notification
-        from notifications.models import Notification
+        from notifications.models import Notification, ActivityLog
         Notification.objects.create(
             user=event.created_by,
             type='event_rejected',
             title='Sự kiện bị từ chối',
             message=f'Sự kiện "{event.title}" đã bị từ chối. Lý do: {approval.comment}',
             event=event
+        )
+        
+        # Log activity
+        ActivityLog.objects.create(
+            user=request.user,
+            action='event_rejected',
+            description=f'Rejected event: {event.title}',
+            metadata={
+                'event_id': event.id,
+                'event_title': event.title,
+                'rejection_reason': approval.comment,
+                'club_id': event.club.id if event.club else None,
+                'club_name': event.club.name if event.club else None
+            }
         )
         
         return Response({

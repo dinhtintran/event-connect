@@ -196,7 +196,7 @@ def create_sample_data():
             'end_at': now + timedelta(days=31),
             'registration_end': now + timedelta(days=25),
             'capacity': 100,
-            'status': 'approved',
+            'status': 'approved',  # Fixed: should be approved since EventApproval is approved
             'is_featured': True,
         }
     )
