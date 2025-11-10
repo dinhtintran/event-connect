@@ -451,13 +451,17 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                     ],
                   ),
                 ),
-          bottomNavigationBar: AppNavBar(
-            currentIndex: _selectedIndex,
-            onTap: _onNavigationTapped,
-            roleOverride: 'school',
-          ),
-        );
-      },
+              ],
+            ),
+            const SizedBox(height: 80), // Space for bottom navigation
+          ],
+        ),
+      ),
+      bottomNavigationBar: AppNavBar(
+        currentIndex: _selectedIndex,
+        onTap: _onNavigationTapped,
+        roleOverride: 'system_admin',
+      ),
     );
   }
 }

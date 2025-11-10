@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:event_connect/features/event_management/domain/models/event.dart';
-import 'package:event_connect/core/utils/dummy_data.dart';
+import 'package:event_connect/features/event_management/domain/services/event_service.dart';
 import 'package:event_connect/features/event_management/presentation/screens/event_detail_screen.dart';
 
 class MyEventsScreen extends StatefulWidget {
@@ -20,6 +21,9 @@ class _MyEventsScreenState extends State<MyEventsScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<EventService>().loadMyRegisteredEvents();
+    });
   }
 
   @override
@@ -29,31 +33,39 @@ class _MyEventsScreenState extends State<MyEventsScreen>
     super.dispose();
   }
 
-  List<Event> get upcomingEvents {
+  List<Event> getUpcomingEvents(EventService eventService) {
     final now = DateTime.now();
-    return DummyData.events
+    return eventService.myRegisteredEvents
         .where((event) => event.date.isAfter(now))
         .toList();
   }
 
-  List<Event> get pastEvents {
+  List<Event> getPastEvents(EventService eventService) {
     final now = DateTime.now();
-    return DummyData.events
+    return eventService.myRegisteredEvents
         .where((event) => event.date.isBefore(now))
         .toList();
   }
 
-  List<Event> get savedEvents {
-    // For demo purposes, return some events
-    return DummyData.events.take(2).toList();
+  List<Event> getSavedEvents(EventService eventService) {
+    // TODO: Implement saved events feature
+    // For now, return empty list
+    return [];
   }
 
   @override
   Widget build(BuildContext context) {
+    final eventService = context.watch<EventService>();
+    final upcomingEvents = getUpcomingEvents(eventService);
+    final pastEvents = getPastEvents(eventService);
+    final savedEvents = getSavedEvents(eventService);
+    
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Column(
+        child: eventService.isLoading && eventService.myRegisteredEvents.isEmpty
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
           children: [
             // Header
             _buildHeader(),
@@ -64,13 +76,16 @@ class _MyEventsScreenState extends State<MyEventsScreen>
             _buildTabs(),
             // Content
             Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildEventsList(upcomingEvents, isUpcoming: true),
-                  _buildEventsList(pastEvents, isUpcoming: false),
-                  _buildEventsList(savedEvents, isUpcoming: true, isSaved: true),
-                ],
+              child: RefreshIndicator(
+                onRefresh: () => context.read<EventService>().loadMyRegisteredEvents(),
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildEventsList(upcomingEvents, isUpcoming: true),
+                    _buildEventsList(pastEvents, isUpcoming: false),
+                    _buildEventsList(savedEvents, isUpcoming: true, isSaved: true),
+                  ],
+                ),
               ),
             ),
           ],

@@ -63,11 +63,11 @@ class _LoginScreenState extends State<LoginScreen> {
     final status = resp['status'] as int? ?? 0;
     final body = resp['body'] as Map<String, dynamic>? ?? {};
     if ((status == 200 || status == 201) && body['access'] != null) {
-      // route by role: school admins -> admin area, club users -> ClubHomePage, others -> common home
+      // route by role: system admins -> admin area, club admins -> ClubHomePage, others -> common home
       final role = Provider.of<AuthService>(context, listen: false).user?.profile.role;
-      if (role == 'system_admin' || role == 'school' || role == 'admin') {
+      if (role == 'school' || role == 'system_admin' || role == 'admin') {
         Navigator.of(context).pushReplacementNamed(AppRoutes.admin);
-      } else if (role == 'club') {
+      } else if (role == 'club_admin') {
         Navigator.of(context).pushReplacementNamed(AppRoutes.clubHome);
       } else {
         Navigator.of(context).pushReplacementNamed(AppRoutes.home);

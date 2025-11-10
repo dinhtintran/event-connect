@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:event_connect/features/event_creation/presentation/screens/club_home_page.dart';
+import 'package:event_connect/features/event_creation/presentation/screens/create_event_screen.dart';
 import 'package:event_connect/core/widgets/app_nav_bar.dart';
 import 'package:event_connect/features/event_creation/presentation/widgets/club_event_card.dart';
+import 'package:event_connect/features/event_creation/data/repositories/club_admin_repository.dart';
+import 'package:event_connect/features/event_creation/data/api/club_admin_api.dart';
+import 'package:event_connect/features/event_management/domain/models/event.dart';
+import 'package:event_connect/features/authentication/authentication.dart';
+import 'package:intl/intl.dart';
 
 class ClubEventsPage extends StatefulWidget {
   const ClubEventsPage({super.key});
@@ -12,6 +19,199 @@ class ClubEventsPage extends StatefulWidget {
 
 class _ClubEventsPageState extends State<ClubEventsPage> {
   int _selectedIndex = 1; // Tab "Sự kiện"
+  
+  // Data state
+  List<Event> _events = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+  
+  // Filter state
+  String _selectedStatus = 'all';
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+  
+  // Repository
+  late final ClubAdminRepository _repository;
+  String? _clubId;
+
+  @override
+  void initState() {
+    super.initState();
+    _repository = ClubAdminRepository(api: ClubAdminApi());
+    _loadClubIdAndEvents();
+  }
+  
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+  
+  Future<void> _loadClubIdAndEvents() async {
+    // Get club ID from user profile
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final user = authService.user;
+    
+    if (user == null) {
+      setState(() {
+        _errorMessage = 'Vui lòng đăng nhập';
+        _isLoading = false;
+      });
+      return;
+    }
+    
+    // Try to get club ID (similar to club_home_page logic)
+    String? clubId;
+    if (user.profile.clubName != null && user.profile.clubName!.isNotEmpty) {
+      try {
+        final clubApi = ClubAdminApi();
+        final clubsResult = await clubApi.clubApi.getAllClubs();
+        if (clubsResult['status'] == 200) {
+          final clubs = clubsResult['body'];
+          if (clubs is Map && clubs.containsKey('results')) {
+            final results = clubs['results'] as List;
+            try {
+              final matchingClub = results.firstWhere(
+                (c) => c['name'] == user.profile.clubName,
+              );
+              clubId = matchingClub['id']?.toString();
+            } catch (e) {
+              debugPrint('Club not found by name');
+            }
+          } else if (clubs is List) {
+            try {
+              final matchingClub = clubs.firstWhere(
+                (c) => c['name'] == user.profile.clubName,
+              );
+              clubId = matchingClub['id']?.toString();
+            } catch (e) {
+              debugPrint('Club not found by name');
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('Error fetching clubs: $e');
+      }
+    }
+    
+    _clubId = clubId ?? '1'; // Fallback
+    _loadEvents();
+  }
+  
+  Future<void> _loadEvents() async {
+    if (_clubId == null) return;
+    
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    
+    try {
+      final status = _selectedStatus == 'all' ? null : _selectedStatus;
+      final searchQuery = _searchQuery.isEmpty ? null : _searchQuery;
+      
+      final events = await _repository.getClubEvents(
+        _clubId!,
+        status: status,
+        searchQuery: searchQuery,
+      );
+      
+      setState(() {
+        _events = events;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading events: $e');
+      setState(() {
+        _errorMessage = 'Lỗi khi tải sự kiện: ${e.toString()}';
+        _isLoading = false;
+      });
+    }
+  }
+  
+  void _onSearchChanged(String query) {
+    setState(() {
+      _searchQuery = query;
+    });
+    // Debounce search
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (_searchQuery == query) {
+        _loadEvents();
+      }
+    });
+  }
+  
+  void _onStatusFilterChanged(String status) {
+    setState(() {
+      _selectedStatus = status;
+    });
+    _loadEvents();
+  }
+  
+  String _formatDate(DateTime date) {
+    try {
+      return DateFormat('dd/MM/yyyy HH:mm').format(date);
+    } catch (e) {
+      // Fallback if date formatting fails
+      return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+    }
+  }
+  
+  String _getStatusText(Event event) {
+    final now = DateTime.now();
+    if (event.status == 'approved' && event.startAt.isBefore(now) && (event.endAt == null || event.endAt!.isAfter(now))) {
+      return 'Đang diễn ra';
+    } else if (event.status == 'approved' && event.startAt.isAfter(now)) {
+      return 'Đã duyệt';
+    } else if (event.status == 'pending') {
+      return 'Chờ duyệt';
+    } else if (event.status == 'draft') {
+      return 'Bản nháp';
+    } else if (event.status == 'completed') {
+      return 'Đã kết thúc';
+    } else if (event.status == 'rejected') {
+      return 'Bị từ chối';
+    }
+    return event.status ?? 'N/A';
+  }
+  
+  Color _getStatusColor(Event event) {
+    final now = DateTime.now();
+    if (event.status == 'approved' && event.startAt.isBefore(now) && (event.endAt == null || event.endAt!.isAfter(now))) {
+      return Colors.indigo;
+    } else if (event.status == 'approved') {
+      return Colors.green;
+    } else if (event.status == 'pending') {
+      return Colors.orange;
+    } else if (event.status == 'draft') {
+      return Colors.grey;
+    } else if (event.status == 'rejected') {
+      return Colors.red;
+    }
+    return Colors.grey;
+  }
+  
+  void _showCreateEventDialog() async {
+    if (_clubId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không tìm thấy thông tin CLB')),
+      );
+      return;
+    }
+    
+    // Navigate to create event screen
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CreateEventScreen(clubId: _clubId),
+      ),
+    );
+    
+    // Reload events if event was created successfully
+    if (result == true) {
+      _loadEvents();
+    }
+  }
 
   // Hiệu ứng trượt ngược (từ trái sang phải khi quay về)
   Route _createSlideBackRoute(Widget page) {
@@ -100,11 +300,13 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Row(
                 children: [
-                  Icon(Icons.search, color: Colors.grey, size: 20),
-                  SizedBox(width: 8),
+                  const Icon(Icons.search, color: Colors.grey, size: 20),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: TextField(
-                      decoration: InputDecoration(
+                      controller: _searchController,
+                      onChanged: _onSearchChanged,
+                      decoration: const InputDecoration(
                         hintText: 'Tìm kiếm sự kiện...',
                         border: InputBorder.none,
                         isDense: true,
@@ -112,6 +314,16 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
                       ),
                     ),
                   ),
+                  if (_searchQuery.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.clear, size: 20),
+                      onPressed: () {
+                        _searchController.clear();
+                        _onSearchChanged('');
+                      },
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
                 ],
               ),
             ),
@@ -122,11 +334,11 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  buildFilterChip('Tất cả', true),
-                  buildFilterChip('Bản nháp', false),
-                  buildFilterChip('Chờ duyệt', false),
-                  buildFilterChip('Đã duyệt', false),
-                  buildFilterChip('Đang diễn ra', false),
+                  buildFilterChip('Tất cả', 'all', _selectedStatus == 'all'),
+                  buildFilterChip('Bản nháp', 'draft', _selectedStatus == 'draft'),
+                  buildFilterChip('Chờ duyệt', 'pending', _selectedStatus == 'pending'),
+                  buildFilterChip('Đã duyệt', 'approved', _selectedStatus == 'approved'),
+                  buildFilterChip('Đã kết thúc', 'completed', _selectedStatus == 'completed'),
                 ],
               ),
             ),
@@ -175,25 +387,76 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
             const SizedBox(height: 12),
 
             // 🟦 Danh sách sự kiện
-            const ClubEventCard(
-              status: 'Đang diễn ra',
-              statusColor: Colors.indigo,
-              title: 'Hội thảo Công nghệ Blockchain và Ứng dụng',
-              date: '10 Tháng 12, 2024 - 14:00',
-              location: 'Phòng hội nghị A2, Đại học Quốc gia',
-              organizer: 'Câu lạc bộ Tin học',
-              image: 'assets/images/blockchain.png',
-            ),
-            const SizedBox(height: 16),
-            const ClubEventCard(
-              status: 'Đã kết thúc',
-              statusColor: Colors.grey,
-              title: 'Lễ bế mạc Giải bóng đá sinh viên',
-              date: '20 Tháng 10, 2024 - 17:00',
-              location: 'Sân bóng đá KTX',
-              organizer: 'Khoa Giáo dục Thể chất',
-              image: 'assets/images/football.jpg',
-            ),
+            if (_isLoading)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(40.0),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            else if (_errorMessage != null)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    children: [
+                      Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
+                      const SizedBox(height: 16),
+                      Text(
+                        _errorMessage!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.red),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _loadEvents,
+                        child: const Text('Thử lại'),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else if (_events.isEmpty)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(40.0),
+                  child: Column(
+                    children: [
+                      Icon(Icons.event_busy, size: 64, color: Colors.grey[300]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Chưa có sự kiện nào',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Tạo sự kiện mới để bắt đầu',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[500],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              ..._events.map((event) => Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: ClubEventCard(
+                  status: _getStatusText(event),
+                  statusColor: _getStatusColor(event),
+                  title: event.title,
+                  date: _formatDate(event.startAt),
+                  location: event.location,
+                  organizer: event.clubName,
+                  image: event.posterUrl,
+                ),
+              )).toList(),
             const SizedBox(height: 28),
 
             // ➕ Nút tạo sự kiện
@@ -201,7 +464,7 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
               width: double.infinity,
               height: 50,
               child: ElevatedButton.icon(
-                onPressed: () {},
+                onPressed: _showCreateEventDialog,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.indigo,
                   shape: RoundedRectangleBorder(
@@ -226,30 +489,33 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
       bottomNavigationBar: AppNavBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
-        roleOverride: 'club',
+        roleOverride: 'club_admin',
       ),
     );
   }
 
   // Widget filter chip
-  Widget buildFilterChip(String label, bool selected) {
+  Widget buildFilterChip(String label, String status, bool selected) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border.all(
-              color: selected ? Colors.transparent : Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(8),
-          color: selected ? Colors.indigo[100] : Colors.white,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: selected ? Colors.indigo : Colors.black,
-              fontWeight: FontWeight.w500,
-              fontSize: 13,
+      child: GestureDetector(
+        onTap: () => _onStatusFilterChanged(status),
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border.all(
+                color: selected ? Colors.transparent : Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(8),
+            color: selected ? Colors.indigo[100] : Colors.white,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: selected ? Colors.indigo : Colors.black,
+                fontWeight: FontWeight.w500,
+                fontSize: 13,
+              ),
             ),
           ),
         ),

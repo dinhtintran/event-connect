@@ -7,23 +7,15 @@ class User {
   User({required this.id, required this.username, this.email, required this.profile});
 
   factory User.fromJson(Map<String, dynamic> json) {
-    // Backend returns role directly in user object, not nested in profile
-    Map<String, dynamic> profileJson = json['profile'] as Map<String, dynamic>? ?? {};
-    // If no profile object exists, create one from user-level fields
-    if (profileJson.isEmpty && json['role'] != null) {
-      final displayName = '${json['first_name'] ?? ''} ${json['last_name'] ?? ''}'.trim();
-      profileJson = {
-        'role': json['role'],
-        'display_name': displayName.isEmpty ? json['username'] ?? '' : displayName,
-        'bio': json['bio'] ?? '',
-        'student_id': json['student_id'],
-      };
-    }
+    final profileJson = json['profile'] as Map<String, dynamic>? ?? {};
+    // Backend returns role at user level, not in profile
+    // So we need to pass it to Profile.fromJson
+    final roleFromUser = json['role'] as String?;
     return User(
       id: json['id'] is int ? json['id'] : int.tryParse('${json['id']}') ?? 0,
       username: json['username'] ?? '',
       email: json['email'],
-      profile: Profile.fromJson(profileJson),
+      profile: Profile.fromJson(profileJson, roleFromUser: roleFromUser),
     );
   }
 }
@@ -38,9 +30,10 @@ class Profile {
 
   Profile({required this.role, required this.displayName, required this.bio, this.studentId, this.clubName, this.schoolCode});
 
-  factory Profile.fromJson(Map<String, dynamic> json) {
+  factory Profile.fromJson(Map<String, dynamic> json, {String? roleFromUser}) {
+    // Priority: roleFromUser (from user level) > json['role'] (from profile) > default 'student'
     return Profile(
-      role: json['role'] ?? 'student',
+      role: roleFromUser ?? json['role'] ?? 'student',
       displayName: json['display_name'] ?? '',
       bio: json['bio'] ?? '',
       studentId: json['student_id'] as String?,

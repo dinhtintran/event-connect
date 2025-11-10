@@ -74,13 +74,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
     setState(() => _loading = true);
+    
+    // Split name into first_name and last_name
+    final nameParts = name.split(' ');
+    final firstName = nameParts.isNotEmpty ? nameParts.first : '';
+    final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+    
     final payload = <String, dynamic>{
       'username': email,
       'email': email,
       'password': password,
-      // send the backend role value, not the UI label
+      'password_confirm': confirm,
       'role': roleOptions[_selectedRole].value,
-      'display_name': name,
+      'first_name': firstName,
+      'last_name': lastName,
     };
   // debug: print payload just before sending
   // ignore: avoid_print
@@ -107,7 +114,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if ((status == 200 || status == 201) && body['access'] != null) {
       if (!mounted) return;
       final role = Provider.of<AuthService>(context, listen: false).user?.profile.role;
-      if (role == 'club') {
+      if (role == 'club_admin') {
         Navigator.of(context).pushReplacementNamed(AppRoutes.clubHome);
       } else {
         Navigator.of(context).pushReplacementNamed(AppRoutes.home);

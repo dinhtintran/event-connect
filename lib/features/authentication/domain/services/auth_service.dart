@@ -145,12 +145,19 @@ class AuthService extends ChangeNotifier {
 
   // Backwards-compatible wrapper matching previous UI signature
   Future<bool> registerWithRole({required String role, required String name, required String email, required String password}) async {
+    // Split name into first_name and last_name
+    final nameParts = name.split(' ');
+    final firstName = nameParts.isNotEmpty ? nameParts.first : '';
+    final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+    
     final map = <String, dynamic>{
       'username': email,
-      'password': password,
       'email': email,
+      'password': password,
+      'password_confirm': password, // Same as password for this wrapper
       'role': role,
-      'display_name': name,
+      'first_name': firstName,
+      'last_name': lastName,
     };
     // role-specific fields may be added by caller in UI if available
     return await registerWithPayload(payload: map);
