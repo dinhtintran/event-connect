@@ -1,10 +1,12 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
+import 'package:event_connect/core/config/app_config.dart';
 
 /// ClubApi để quản lý CLB
 class ClubApi {
   final Dio dio;
 
-  ClubApi({Dio? dio}) : dio = dio ?? Dio();
+  ClubApi({Dio? dio}) : dio = dio ?? Dio(BaseOptions(baseUrl: AppConfig.apiBaseUrl));
 
   void _dbg(String s) {
     // ignore: avoid_print
@@ -37,7 +39,20 @@ class ClubApi {
     try {
       final res = await dio.get('/api/clubs/$id/');
       _dbg('response ${res.statusCode} ${res.requestOptions.uri}');
-      return {'status': res.statusCode, 'body': res.data};
+      _dbg('response.data type: ${res.data.runtimeType}');
+      
+      // Handle String response (need to parse JSON manually)
+      dynamic body = res.data;
+      if (body is String) {
+        _dbg('WARNING: Response is String, parsing JSON manually');
+        try {
+          body = jsonDecode(body);
+        } catch (e) {
+          _dbg('Failed to parse JSON: $e');
+        }
+      }
+      
+      return {'status': res.statusCode, 'body': body};
     } on DioException catch (e) {
       _dbg('DioException: type=${e.type} status=${e.response?.statusCode} error=${e.message}');
       return {'status': e.response?.statusCode ?? 0, 'body': e.response?.data ?? {'detail': e.message}};

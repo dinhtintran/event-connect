@@ -1,10 +1,11 @@
 import 'package:dio/dio.dart';
+import 'package:event_connect/core/config/app_config.dart';
 
 /// ApprovalApi để quản lý phê duyệt sự kiện (Admin only)
 class ApprovalApi {
   final Dio dio;
 
-  ApprovalApi({Dio? dio}) : dio = dio ?? Dio();
+  ApprovalApi({Dio? dio}) : dio = dio ?? Dio(BaseOptions(baseUrl: AppConfig.apiBaseUrl));
 
   void _dbg(String s) {
     // ignore: avoid_print

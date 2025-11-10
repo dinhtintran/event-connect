@@ -1,10 +1,11 @@
 import 'package:dio/dio.dart';
+import 'package:event_connect/core/config/app_config.dart';
 
 /// AdminApi để quản lý các tính năng admin
 class AdminApi {
   final Dio dio;
 
-  AdminApi({Dio? dio}) : dio = dio ?? Dio();
+  AdminApi({Dio? dio}) : dio = dio ?? Dio(BaseOptions(baseUrl: AppConfig.apiBaseUrl));
 
   void _dbg(String s) {
     // ignore: avoid_print
