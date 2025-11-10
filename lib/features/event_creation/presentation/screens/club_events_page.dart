@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:event_connect/features/event_creation/presentation/screens/club_home_page.dart';
 import 'package:event_connect/core/widgets/app_nav_bar.dart';
 import 'package:event_connect/features/event_creation/presentation/widgets/club_event_card.dart';
+import 'package:event_connect/app_routes.dart';
 
 class ClubEventsPage extends StatefulWidget {
   const ClubEventsPage({super.key});
@@ -31,9 +32,19 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
   void _onItemTapped(int index) {
     setState(() => _selectedIndex = index);
 
+    // Navigation based on index:
+    // 0 -> Trang Chủ
+    // 1 -> Sự kiện (current page)
+    // 2 -> Thư
+    // 3 -> Thống Kê
+    // 4 -> Hồ Sơ
+
     if (index == 0) {
-      // Khi bấm Trang chủ, trượt ngược từ phải qua trái
+      // Go back to Club Home Page
       Navigator.push(context, _createSlideBackRoute(const ClubHomePage()));
+    } else if (index == 4) {
+      // Navigate to Profile
+      Navigator.pushNamed(context, AppRoutes.profile);
     }
   }
 
@@ -226,7 +237,7 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
       bottomNavigationBar: AppNavBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
-        roleOverride: 'club',
+        roleOverride: 'club_admin',
       ),
     );
   }

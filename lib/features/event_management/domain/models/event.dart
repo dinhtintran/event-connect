@@ -69,28 +69,38 @@ class Event {
       return DateTime.tryParse(raw.toString());
     }
 
+    // Parse club data from nested object
+    final clubData = json['club'];
+    String clubName = '';
+    String? clubId;
+
+    if (clubData != null && clubData is Map) {
+      clubName = clubData['name'] ?? '';
+      clubId = parseId(clubData['id']);
+    }
+
     return Event(
-      id: parseId(json['id'] ?? json['event_id']),
+      id: parseId(json['id']),
       title: (json['title'] ?? '') as String,
-      imageUrl: (json['imageUrl'] ?? json['image_url'] ?? json['poster_url'] ?? '') as String,
-  date: parseDate(json['date']) ?? DateTime.now(),
+      imageUrl: (json['poster'] ?? json['poster_url'] ?? json['image_url'] ?? '') as String,
+      date: parseDate(json['start_at']) ?? DateTime.now(),
       location: (json['location'] ?? '') as String,
       category: (json['category'] ?? '') as String,
-      isFeatured: (json['isFeatured'] is bool) ? json['isFeatured'] as bool : false,
-  clubName: json['clubName'] as String? ?? '',
-  clubId: json['clubId'] != null ? (json['clubId'] is String ? json['clubId'] as String : json['clubId'].toString()) : null,
-  description: json['description'] as String? ?? '',
-  locationDetail: json['locationDetail'] as String? ?? '',
-  startAt: parseDate(json['startAt']) ?? (parseDate(json['date']) ?? DateTime.now()),
-      endAt: parseDate(json['endAt']),
-      posterUrl: (json['poster_url'] ?? json['posterUrl'] ?? '') as String,
+      isFeatured: (json['is_featured'] is bool) ? json['is_featured'] as bool : false,
+      clubName: clubName,
+      clubId: clubId,
+      description: json['description'] as String? ?? '',
+      locationDetail: json['location_detail'] as String? ?? '',
+      startAt: parseDate(json['start_at']) ?? DateTime.now(),
+      endAt: parseDate(json['end_at']),
+      posterUrl: (json['poster'] ?? json['poster_url'] ?? '') as String,
       capacity: parseInt(json['capacity']),
-      participantCount: parseInt(json['participantCount']),
+      participantCount: parseInt(json['registration_count']),
       status: json['status'] as String?,
-  riskLevel: json['riskLevel'] as String? ?? '',
-      createdAt: parseDate(json['createdAt']),
-      updatedAt: parseDate(json['updatedAt']),
-      createdBy: json['createdBy'] as String?,
+      riskLevel: '', // Not in API response
+      createdAt: parseDate(json['created_at']),
+      updatedAt: parseDate(json['updated_at']),
+      createdBy: json['created_by'] != null ? parseId(json['created_by']) : null,
     );
   }
 

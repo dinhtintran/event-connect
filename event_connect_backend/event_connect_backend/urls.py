@@ -24,9 +24,9 @@ urlpatterns = [
     
     # API endpoints
     path('api/accounts/', include('accounts.urls')),
-    path('api/', include('clubs.urls')),
-    path('api/', include('event_management.urls')),
-    path('api/', include('notifications.urls')),
+    path('api/clubs/', include('clubs.urls')),
+    path('api/event_management/', include('event_management.urls')),
+    path('api/notifications/', include('notifications.urls')),
 ]
 
 # Serve media files in development

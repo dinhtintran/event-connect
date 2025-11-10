@@ -18,13 +18,31 @@ class _ClubHomePageState extends State<ClubHomePage> {
   void _onItemTapped(int index) {
     setState(() => _selectedIndex = index);
 
-    // 👉 Nếu bấm tab "Sự kiện" trong bottom nav -> chuyển sang trang ClubEventsPage
+    // Navigation based on index:
+    // 0 -> Trang Chủ (stay here)
+    // 1 -> Sự kiện
+    // 2 -> Thư (not implemented)
+    // 3 -> Thống Kê (not implemented)
+    // 4 -> Hồ Sơ
+
     if (index == 1) {
+      // Navigate to Events page
       debugPrint('ClubHomePage: tapping Sự kiện tab -> navigate to ClubEventsPage (named)');
       try {
         Navigator.pushNamed(context, AppRoutes.clubEvents);
       } catch (e, st) {
         debugPrint('Failed to navigate to ClubEventsPage (named): $e\n$st');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi khi chuyển trang: ${e.toString()}')));
+        }
+      }
+    } else if (index == 4) {
+      // Navigate to Profile
+      debugPrint('ClubHomePage: tapping Hồ Sơ tab -> navigate to Profile');
+      try {
+        Navigator.pushNamed(context, AppRoutes.profile);
+      } catch (e, st) {
+        debugPrint('Failed to navigate to Profile: $e\n$st');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi khi chuyển trang: ${e.toString()}')));
         }

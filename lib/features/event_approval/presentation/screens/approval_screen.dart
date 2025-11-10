@@ -177,7 +177,20 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
     setState(() {
       _selectedIndex = index;
     });
-    // TODO: Navigate to different screens based on index
+    // Navigate based on index
+    // 0 -> Admin Dashboard
+    // 1 -> Approval (current screen)
+    // 2 -> Reports
+    // 3 -> Profile
+    if (index == 0) {
+      Navigator.of(context).pushReplacementNamed(AppRoutes.admin);
+      return;
+    }
+    if (index == 3) {
+      Navigator.of(context).pushNamed(AppRoutes.profile);
+      return;
+    }
+    // For other tabs, stay on current screen
   }
 
   @override
@@ -277,7 +290,7 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
       bottomNavigationBar: AppNavBar(
         currentIndex: _selectedIndex,
         onTap: _onNavigationTapped,
-        roleOverride: 'school',
+        roleOverride: 'system_admin',
       ),
     );
   }
