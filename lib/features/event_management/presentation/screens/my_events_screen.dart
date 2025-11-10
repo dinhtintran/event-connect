@@ -189,13 +189,18 @@ class _MyEventsScreenState extends State<MyEventsScreen>
           ),
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
+              GestureDetector(
+                onTap: () {
+                  Navigator.pushNamed(context, AppRoutes.notifications);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.notifications_outlined, size: 24),
                 ),
-                child: const Icon(Icons.notifications_outlined, size: 24),
               ),
               const SizedBox(width: 12),
               GestureDetector(

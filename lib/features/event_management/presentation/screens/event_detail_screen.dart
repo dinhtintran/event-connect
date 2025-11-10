@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:event_connect/features/event_management/domain/models/event.dart';
+import 'package:event_connect/features/event_management/data/api/event_api.dart';
 
 class EventDetailScreen extends StatefulWidget {
   final Event event;
@@ -15,7 +17,146 @@ class EventDetailScreen extends StatefulWidget {
 }
 
 class _EventDetailScreenState extends State<EventDetailScreen> {
+  final _eventApi = EventApi();
+  final _storage = const FlutterSecureStorage();
+
   bool isFavorite = false;
+  bool isRegistered = false;
+  bool isLoadingRegistration = true;
+  bool isRegistering = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkRegistrationStatus();
+  }
+
+  Future<void> _checkRegistrationStatus() async {
+    setState(() {
+      isLoadingRegistration = true;
+    });
+
+    try {
+      final accessToken = await _storage.read(key: 'auth_access');
+
+      if (accessToken == null) {
+        setState(() {
+          isRegistered = false;
+          isLoadingRegistration = false;
+        });
+        return;
+      }
+
+      // Get user's registered events and check if this event is in the list
+      final result = await _eventApi.getMyEvents(accessToken: accessToken);
+
+      if (result['status'] == 200) {
+        final data = result['body'];
+
+        if (data['results'] != null) {
+          final registrations = data['results'] as List;
+
+          // Check if current event is in registered events
+          final registered = registrations.any((registration) {
+            final eventData = registration['event'];
+            return eventData != null && eventData['id'].toString() == widget.event.id;
+          });
+
+          setState(() {
+            isRegistered = registered;
+            isLoadingRegistration = false;
+          });
+        }
+      } else {
+        setState(() {
+          isLoadingRegistration = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        isLoadingRegistration = false;
+      });
+    }
+  }
+
+  Future<void> _handleRegister() async {
+    setState(() {
+      isRegistering = true;
+    });
+
+    try {
+      final accessToken = await _storage.read(key: 'auth_access');
+
+      if (accessToken == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Bạn cần đăng nhập để đăng ký sự kiện')),
+          );
+        }
+        setState(() {
+          isRegistering = false;
+        });
+        return;
+      }
+
+      // Call register API
+      final result = await _eventApi.registerForEvent(
+        accessToken: accessToken,
+        eventId: widget.event.id,
+      );
+
+      if (result['status'] == 200 || result['status'] == 201) {
+        setState(() {
+          isRegistered = true;
+          isRegistering = false;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Đăng ký sự kiện thành công!'),
+              backgroundColor: Color(0xFF5669FF),
+            ),
+          );
+        }
+      } else {
+        setState(() {
+          isRegistering = false;
+        });
+
+        final errorMessage = result['body']?['error'] ?? 'Không thể đăng ký sự kiện';
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(errorMessage)),
+          );
+        }
+      }
+    } catch (e) {
+      setState(() {
+        isRegistering = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleCheckIn() async {
+    // TODO: Call check-in API
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Check-in thành công!'),
+          backgroundColor: Color(0xFF5669FF),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -342,7 +483,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               ),
             ],
           ),
-          // Bottom Check-in Button
+          // Bottom Buttons
           Positioned(
             bottom: 0,
             left: 0,
@@ -359,33 +500,92 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   ),
                 ],
               ),
-              child: ElevatedButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Check-in thành công!'),
-                      backgroundColor: Color(0xFF5669FF),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF5669FF),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 0,
-                ),
-                child: const Text(
-                  'Check-in',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
+              child: isLoadingRegistration
+                  ? const Center(child: CircularProgressIndicator())
+                  : isRegistered
+                      ? Row(
+                          children: [
+                            // Đã đăng ký button (disabled/info only)
+                            Expanded(
+                              flex: 2,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade200,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.check_circle, color: Colors.green, size: 20),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Đã đăng ký',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            // Check-in button
+                            Expanded(
+                              flex: 3,
+                              child: ElevatedButton(
+                                onPressed: _handleCheckIn,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF5669FF),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  elevation: 0,
+                                ),
+                                child: const Text(
+                                  'Check-in',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : ElevatedButton(
+                          onPressed: isRegistering ? null : _handleRegister,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF5669FF),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                            disabledBackgroundColor: Colors.grey.shade300,
+                          ),
+                          child: isRegistering
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
+                                )
+                              : const Text(
+                                  'Đăng ký',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                        ),
             ),
           ),
         ],

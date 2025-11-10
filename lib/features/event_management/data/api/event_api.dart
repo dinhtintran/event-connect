@@ -161,5 +161,37 @@ class EventApi {
       };
     }
   }
+
+  /// Register for an event
+  Future<Map<String, dynamic>> registerForEvent({
+    required String accessToken,
+    required String eventId,
+  }) async {
+    _dbg('POST /api/event_management/events/$eventId/register/');
+
+    try {
+      final res = await dio.post(
+        '/api/event_management/events/$eventId/register/',
+        options: Options(
+          headers: {'Authorization': 'Bearer $accessToken'},
+        ),
+      );
+      _dbg('response ${res.statusCode} ${res.requestOptions.uri}');
+      return {'status': res.statusCode, 'body': res.data};
+    } on DioException catch (e) {
+      _dbg(
+          'DioException on registerForEvent: type=${e.type} uri=${e.requestOptions.uri} status=${e.response?.statusCode} error=${e.message}');
+      return {
+        'status': e.response?.statusCode ?? 0,
+        'body': e.response?.data ?? {'detail': e.message}
+      };
+    } catch (e) {
+      _dbg('Exception on registerForEvent: $e');
+      return {
+        'status': 0,
+        'body': {'detail': e.toString()}
+      };
+    }
+  }
 }
 
