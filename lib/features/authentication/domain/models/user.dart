@@ -7,7 +7,18 @@ class User {
   User({required this.id, required this.username, this.email, required this.profile});
 
   factory User.fromJson(Map<String, dynamic> json) {
-    final profileJson = json['profile'] as Map<String, dynamic>? ?? {};
+    // Backend returns role directly in user object, not nested in profile
+    Map<String, dynamic> profileJson = json['profile'] as Map<String, dynamic>? ?? {};
+    // If no profile object exists, create one from user-level fields
+    if (profileJson.isEmpty && json['role'] != null) {
+      final displayName = '${json['first_name'] ?? ''} ${json['last_name'] ?? ''}'.trim();
+      profileJson = {
+        'role': json['role'],
+        'display_name': displayName.isEmpty ? json['username'] ?? '' : displayName,
+        'bio': json['bio'] ?? '',
+        'student_id': json['student_id'],
+      };
+    }
     return User(
       id: json['id'] is int ? json['id'] : int.tryParse('${json['id']}') ?? 0,
       username: json['username'] ?? '',
