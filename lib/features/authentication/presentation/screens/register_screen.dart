@@ -106,8 +106,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
     if ((status == 200 || status == 201) && body['access'] != null) {
       if (!mounted) return;
-      final role = Provider.of<AuthService>(context, listen: false).user?.profile.role;
-      if (role == 'club') {
+      // Route by role based on backend values
+      final user = Provider.of<AuthService>(context, listen: false).user;
+      final role = user?.role ?? 'student';
+
+      if (role == 'system_admin') {
+        Navigator.of(context).pushReplacementNamed(AppRoutes.admin);
+      } else if (role == 'club_admin') {
         Navigator.of(context).pushReplacementNamed(AppRoutes.clubHome);
       } else {
         Navigator.of(context).pushReplacementNamed(AppRoutes.home);

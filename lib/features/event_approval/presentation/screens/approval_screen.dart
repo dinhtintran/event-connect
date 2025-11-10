@@ -182,10 +182,10 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Authorization guard: only allow authenticated users with role 'school'
+    // Authorization guard: only allow system admins
     final auth = Provider.of<AuthService>(context);
-    final role = auth.user?.profile.role;
-    if (!auth.isAuthenticated || role != 'school') {
+    final role = auth.user?.role;
+    if (!auth.isAuthenticated || role != 'system_admin') {
       return Scaffold(
         appBar: AppBar(
           backgroundColor: Colors.white,

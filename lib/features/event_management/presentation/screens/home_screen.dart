@@ -4,6 +4,7 @@ import 'package:event_connect/core/utils/dummy_data.dart';
 import 'package:event_connect/features/event_management/presentation/widgets/category_chip.dart';
 import 'package:event_connect/features/event_management/presentation/widgets/event_card_large.dart';
 import 'package:event_connect/features/event_management/presentation/widgets/event_list_item.dart';
+import 'package:event_connect/app_routes.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -163,10 +164,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: const Icon(Icons.notifications_outlined, size: 24),
               ),
               const SizedBox(width: 12),
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: Colors.grey.shade200,
-                child: const Icon(Icons.person, color: Colors.grey),
+              GestureDetector(
+                onTap: () {
+                  Navigator.pushNamed(context, AppRoutes.profile);
+                },
+                child: CircleAvatar(
+                  radius: 20,
+                  backgroundColor: Colors.grey.shade200,
+                  child: const Icon(Icons.person, color: Colors.grey),
+                ),
               ),
             ],
           ),
