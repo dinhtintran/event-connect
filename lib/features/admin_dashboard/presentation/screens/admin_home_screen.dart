@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:event_connect/features/event_management/domain/models/event.dart';
 import 'package:event_connect/features/admin_dashboard/domain/models/activity.dart';
+import 'package:event_connect/features/admin_dashboard/domain/models/admin_stats.dart';
+import 'package:event_connect/features/admin_dashboard/domain/services/admin_service.dart';
 import 'package:event_connect/features/admin_dashboard/presentation/widgets/stat_card.dart';
 import 'package:event_connect/features/admin_dashboard/presentation/widgets/pending_event_card.dart';
 import 'package:event_connect/features/admin_dashboard/presentation/widgets/activity_item.dart';
@@ -17,71 +20,107 @@ class AdminHomeScreen extends StatefulWidget {
 
 class _AdminHomeScreenState extends State<AdminHomeScreen> {
   int _selectedIndex = 0;
+  bool _isLoadingPendingEvents = true;
+  bool _isLoadingActivities = true;
+  List<Event> _pendingEvents = [];
+  List<Activity> _recentActivities = [];
 
-  // Sample data - should be fetched from API
-  final List<Event> _pendingEvents = [
-    Event(
-      id: '1',
-      title: 'Lễ hội âm nhạc mùa hè',
-      clubId: '1',
-      description: 'Summer music festival',
-      location: 'Main Hall',
-      startAt: DateTime(2024, 7, 15, 18, 0),
-      endAt: DateTime(2024, 7, 15, 22, 0),
-      posterUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800',
-      capacity: 500,
-      status: 'pending',
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-      createdBy: '1',
-    ),
-    Event(
-      id: '2',
-      title: 'Hội nghị đổi mới công nghệ',
-      clubId: '2',
-      description: 'Technology innovation conference',
-      location: 'Conference Center',
-      startAt: DateTime(2024, 8, 22, 9, 0),
-      endAt: DateTime(2024, 8, 22, 17, 0),
-      posterUrl: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800',
-      capacity: 300,
-      status: 'pending',
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-      createdBy: '2',
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
 
-  final List<Activity> _recentActivities = [
-    Activity(
-      id: '1',
-      icon: 'check_circle',
-      title: 'Sự kiện \'Hội chợ việc làm trực tuyến\' đã được phê duyệt.',
-      subtitle: '',
-      timestamp: '2 phút trước',
-    ),
-    Activity(
-      id: '2',
-      icon: 'attach_money',
-      title: 'Khoản thanh toán mới được nhận từ \'CLB Lập trình\'.',
-      subtitle: '',
-      timestamp: '1 giờ trước',
-    ),
-    Activity(
-      id: '3',
-      icon: 'person_add',
-      title: 'Người dùng \'Nguyễn Văn A\' đã đăng ký sự kiện mới.',
-      subtitle: '',
-      timestamp: '3 giờ trước',
-    ),
-    Activity(
-      id: '4',
-      icon: 'warning',
-      title: 'Cảnh báo: Sự kiện \'Giải đấu thể thao điện tử\' bị hủy.',
-      subtitle: '',
-      timestamp: 'Hôm qua',
-    ),
-  ];
+  Future<void> _loadData() async {
+    final adminService = Provider.of<AdminService>(context, listen: false);
+    
+    // Fetch statistics
+    await adminService.fetchStats();
+    
+    // Fetch pending events
+    _loadPendingEvents();
+    
+    // Fetch recent activities
+    _loadActivities();
+  }
+
+  Future<void> _loadPendingEvents() async {
+    setState(() => _isLoadingPendingEvents = true);
+    
+    final adminService = Provider.of<AdminService>(context, listen: false);
+    final response = await adminService.fetchPendingApprovals();
+    
+    if (response['status'] == 200) {
+      final results = response['body']['results'] as List<dynamic>;
+      setState(() {
+        _pendingEvents = results.map((json) => Event.fromJson(json['event'])).toList();
+        _isLoadingPendingEvents = false;
+      });
+    } else {
+      setState(() => _isLoadingPendingEvents = false);
+    }
+  }
+
+  Future<void> _loadActivities() async {
+    setState(() => _isLoadingActivities = true);
+    
+    final adminService = Provider.of<AdminService>(context, listen: false);
+    final response = await adminService.fetchActivities(limit: 10);
+    
+    if (response['status'] == 200) {
+      final results = response['body']['results'] as List<dynamic>;
+      setState(() {
+        _recentActivities = results.map((json) {
+          return Activity(
+            id: json['id'].toString(),
+            icon: _getIconForAction(json['action']),
+            title: json['description'] ?? '',
+            subtitle: json['user']?['username'] ?? '',
+            timestamp: _formatTimestamp(json['created_at']),
+          );
+        }).toList();
+        _isLoadingActivities = false;
+      });
+    } else {
+      setState(() => _isLoadingActivities = false);
+    }
+  }
+
+  String _getIconForAction(String? action) {
+    switch (action) {
+      case 'event_approved':
+        return 'check_circle';
+      case 'event_rejected':
+        return 'cancel';
+      case 'event_created':
+        return 'event';
+      case 'user_registered':
+        return 'person_add';
+      default:
+        return 'info';
+    }
+  }
+
+  String _formatTimestamp(String? timestamp) {
+    if (timestamp == null) return '';
+    try {
+      final date = DateTime.parse(timestamp);
+      final now = DateTime.now();
+      final difference = now.difference(date);
+      
+      if (difference.inMinutes < 60) {
+        return '${difference.inMinutes} phút trước';
+      } else if (difference.inHours < 24) {
+        return '${difference.inHours} giờ trước';
+      } else if (difference.inDays == 1) {
+        return 'Hôm qua';
+      } else {
+        return '${difference.inDays} ngày trước';
+      }
+    } catch (e) {
+      return '';
+    }
+  }
 
   void _handleApproveEvent(Event event) {
     showDialog(
@@ -118,6 +157,8 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   }
 
   void _handleRejectEvent(Event event) {
+    final reasonController = TextEditingController();
+    
     showDialog(
       context: context,
       builder: (context) =>
@@ -194,141 +235,184 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text(
-          'EventConnect Admin',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
+    return Consumer<AdminService>(
+      builder: (context, adminService, _) {
+        final stats = adminService.stats;
+        final isLoading = adminService.isLoading;
+        
+        return Scaffold(
+          backgroundColor: Colors.white,
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            title: const Text(
+              'EventConnect Admin',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.refresh, color: Colors.black),
+                onPressed: _loadData,
+              ),
+              IconButton(
+                icon: const Icon(Icons.notifications_outlined, color: Colors.black),
+                onPressed: () {
+                  // TODO: Navigate to notifications
+                },
+              ),
+            ],
           ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined, color: Colors.black),
-            onPressed: () {
-              // TODO: Navigate to notifications
-            },
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Statistics Section
-            const Text(
-              'Tổng quan thống kê',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: StatCard(
-                    icon: Icons.event_outlined,
-                    label: 'Tổng số sự kiện',
-                    value: '1,250',
-                    backgroundColor: Colors.blue,
-                    iconColor: Colors.blue,
+          body: isLoading && stats == null
+              ? const Center(child: CircularProgressIndicator())
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Statistics Section
+                      const Text(
+                        'Tổng quan thống kê',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: StatCard(
+                              icon: Icons.event_outlined,
+                              label: 'Tổng số sự kiện',
+                              value: stats?.overview.totalEvents.toString() ?? '0',
+                              backgroundColor: Colors.blue,
+                              iconColor: Colors.blue,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: StatCard(
+                              icon: Icons.people_outline,
+                              label: 'Tổng số người dùng',
+                              value: stats?.overview.totalUsers.toString() ?? '0',
+                              backgroundColor: Colors.orange,
+                              iconColor: Colors.orange,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 32),
+
+                      // Pending Approvals Section
+                      const Text(
+                        'Phê duyệt đang chờ xử lý',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      if (_isLoadingPendingEvents)
+                        const Center(child: CircularProgressIndicator())
+                      else if (_pendingEvents.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(32.0),
+                          child: Center(
+                            child: Text(
+                              'Không có sự kiện nào đang chờ phê duyệt',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          ),
+                        )
+                      else
+                        ..._pendingEvents.map((event) => PendingEventCard(
+                              event: event,
+                              onApprove: () => _handleApproveEvent(event),
+                              onReject: () => _handleRejectEvent(event),
+                            )),
+                      const SizedBox(height: 32),
+
+                      // Recent Activities Section
+                      const Text(
+                        'Hoạt động gần đây',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      if (_isLoadingActivities)
+                        const Center(child: CircularProgressIndicator())
+                      else if (_recentActivities.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(32.0),
+                          child: Center(
+                            child: Text(
+                              'Chưa có hoạt động nào',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          ),
+                        )
+                      else
+                        ..._recentActivities.map((activity) => ActivityItem(
+                              activity: activity,
+                            )),
+                      const SizedBox(height: 32),
+
+                      // Quick Actions Section
+                      const Text(
+                        'Hành động nhanh',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      GridView.count(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 16,
+                        crossAxisSpacing: 16,
+                        childAspectRatio: 1.5,
+                        children: [
+                          QuickActionButton(
+                            icon: Icons.people_outline,
+                            label: 'Quản lý người dùng',
+                            onTap: () {
+                              // TODO: Navigate to user management
+                            },
+                          ),
+                          QuickActionButton(
+                            icon: Icons.visibility_outlined,
+                            label: 'Xem báo cáo',
+                            onTap: () {
+                              // TODO: Navigate to reports
+                            },
+                          ),
+                          QuickActionButton(
+                            icon: Icons.settings_outlined,
+                            label: 'Cài đặt ứng dụng',
+                            onTap: () {
+                              // TODO: Navigate to settings
+                            },
+                          ),
+                          QuickActionButton(
+                            icon: Icons.check_circle_outline,
+                            label: 'Phê duyệt sự kiện',
+                            onTap: () {
+                              Navigator.of(context).pushReplacementNamed(AppRoutes.approval);
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 80), // Space for bottom navigation
+                    ],
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: StatCard(
-                    icon: Icons.people_outline,
-                    label: 'Tổng số người dùng',
-                    value: '8,765',
-                    backgroundColor: Colors.orange,
-                    iconColor: Colors.orange,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
-
-            // Pending Approvals Section
-            const Text(
-              'Phê duyệt đang chờ xử lý',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ..._pendingEvents.map((event) => PendingEventCard(
-                  event: event,
-                  onApprove: () => _handleApproveEvent(event),
-                  onReject: () => _handleRejectEvent(event),
-                )),
-            const SizedBox(height: 32),
-
-            // Recent Activities Section
-            const Text(
-              'Hoạt động gần đây',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            ..._recentActivities.map((activity) => ActivityItem(
-                  activity: activity,
-                )),
-            const SizedBox(height: 32),
-
-            // Quick Actions Section
-            const Text(
-              'Hành động nhanh',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
-              childAspectRatio: 1.5,
-              children: [
-                QuickActionButton(
-                  icon: Icons.people_outline,
-                  label: 'Quản lý người dùng',
-                  onTap: () {
-                    // TODO: Navigate to user management
-                  },
-                ),
-                QuickActionButton(
-                  icon: Icons.visibility_outlined,
-                  label: 'Xem báo cáo',
-                  onTap: () {
-                    // TODO: Navigate to reports
-                  },
-                ),
-                QuickActionButton(
-                  icon: Icons.settings_outlined,
-                  label: 'Cài đặt ứng dụng',
-                  onTap: () {
-                    // TODO: Navigate to settings
-                  },
-                ),
-                QuickActionButton(
-                  icon: Icons.check_circle_outline,
-                  label: 'Phê duyệt sự kiện',
-                  onTap: () {
-                    // TODO: Navigate to approvals
-                  },
                 ),
               ],
             ),

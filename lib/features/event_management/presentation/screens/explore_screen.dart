@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:event_connect/features/event_management/domain/models/event.dart';
-import 'package:event_connect/features/event_management/data/api/event_api.dart';
+import 'package:event_connect/features/event_management/domain/services/event_service.dart';
 import 'package:event_connect/features/event_management/presentation/widgets/category_chip.dart';
 import 'package:event_connect/features/event_management/presentation/screens/event_detail_screen.dart';
 import 'package:event_connect/app_routes.dart';
@@ -25,60 +26,18 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Set<String> selectedCategories = {};
   DateTimeRange? selectedDateRange;
 
-  // API data
-  List<Event> _allEvents = [];
-  bool _isLoading = true;
-  String? _errorMessage;
-
   @override
   void initState() {
     super.initState();
-    _loadEvents();
-  }
-
-  @override
-  void dispose() {
-    searchController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadEvents() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<EventService>().loadAllEvents();
     });
-
-    try {
-      final result = await _eventApi.getUpcomingEvents(page: 1);
-
-      if (result['status'] == 200) {
-        final data = result['body'];
-
-        setState(() {
-          if (data['results'] != null) {
-            _allEvents = (data['results'] as List)
-                .map((json) => Event.fromJson(json))
-                .toList();
-          }
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _errorMessage = 'Không thể tải sự kiện';
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Lỗi: $e';
-        _isLoading = false;
-      });
-    }
   }
 
   List<Event> get filteredEvents {
-    List<Event> events = _allEvents;
-
+    final eventService = context.read<EventService>();
+    List<Event> events = eventService.allEvents;
+    
     // Filter by category chip
     if (selectedCategory != 'Tất cả') {
       events = events.where((event) => event.category == selectedCategory).toList();
@@ -293,9 +252,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            itemCount: categories.length,
+            itemCount: EventService.categories.length,
             itemBuilder: (context, index) {
-              final category = categories[index];
+              final category = EventService.categories[index];
               return Padding(
                 padding: const EdgeInsets.only(right: 12),
                 child: CategoryChip(
@@ -306,6 +265,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       selectedCategory = category;
                       displayedEventsCount = 4;
                     });
+                    context.read<EventService>().setCategory(category);
                   },
                 ),
               );

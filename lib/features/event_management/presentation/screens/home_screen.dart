@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:event_connect/features/event_management/domain/models/event.dart';
-import 'package:event_connect/features/event_management/data/api/event_api.dart';
+import 'package:event_connect/features/event_management/domain/services/event_service.dart';
 import 'package:event_connect/features/event_management/presentation/widgets/category_chip.dart';
 import 'package:event_connect/features/event_management/presentation/widgets/event_card_large.dart';
 import 'package:event_connect/features/event_management/presentation/widgets/event_list_item.dart';
@@ -21,85 +22,29 @@ class _HomeScreenState extends State<HomeScreen> {
   int displayedUpcomingEventsCount = 3;
   bool isLoadingMore = false;
 
-  // Data from API
-  List<Event> _allEvents = [];
-  List<Event> _featuredEvents = [];
-  bool _isLoading = true;
-  String? _errorMessage;
-
   @override
   void initState() {
     super.initState();
-    _loadEvents();
-  }
-
-  @override
-  void dispose() {
-    searchController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadEvents() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
+    // Load data khi màn hình được tạo
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadInitialData();
     });
-
-    try {
-      // Load featured events
-      final featuredResult = await _eventApi.getFeaturedEvents();
-
-      // Load upcoming events
-      final upcomingResult = await _eventApi.getUpcomingEvents();
-
-      if (featuredResult['status'] == 200 && upcomingResult['status'] == 200) {
-        final featuredData = featuredResult['body'];
-        final upcomingData = upcomingResult['body'];
-
-        setState(() {
-          // Parse featured events
-          if (featuredData['results'] != null) {
-            _featuredEvents = (featuredData['results'] as List)
-                .map((json) => Event.fromJson(json))
-                .toList();
-          }
-
-          // Parse all events
-          if (upcomingData['results'] != null) {
-            _allEvents = (upcomingData['results'] as List)
-                .map((json) => Event.fromJson(json))
-                .toList();
-          }
-
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _errorMessage = 'Không thể tải sự kiện';
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Lỗi: $e';
-        _isLoading = false;
-      });
-    }
   }
 
-  List<Event> get filteredEvents {
-    if (selectedCategory == 'Tất cả') {
-      return _allEvents;
-    }
-    return _allEvents
-        .where((event) => event.category == selectedCategory)
-        .toList();
+  Future<void> _loadInitialData() async {
+    final eventService = context.read<EventService>();
+    await Future.wait([
+      eventService.loadAllEvents(),
+      eventService.loadFeaturedEvents(),
+    ]);
   }
-
-  List<Event> get featuredEvents => _featuredEvents;
 
   List<Event> get allUpcomingEvents {
-    return _allEvents.where((event) => !event.isFeatured).toList();
+    final eventService = context.watch<EventService>();
+    final now = DateTime.now();
+    return eventService.filteredEvents
+        .where((event) => event.date.isAfter(now) && !event.isFeatured)
+        .toList();
   }
 
   List<Event> get displayedUpcomingEvents {
@@ -125,59 +70,58 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final eventService = context.watch<EventService>();
+    final featuredEvents = eventService.featuredEvents;
+    
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Column(
+        child: eventService.isLoading && eventService.allEvents.isEmpty
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
           children: [
             _buildHeader(),
             Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _errorMessage != null
-                  ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                    const SizedBox(height: 16),
-                    Text(_errorMessage!),
-                    const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      onPressed: _loadEvents,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Thử lại'),
-                    ),
-                  ],
-                ),
-              )
-                  : RefreshIndicator(
-                onRefresh: _loadEvents,
+              child: RefreshIndicator(
+                onRefresh: _loadInitialData,
                 child: SingleChildScrollView(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Search Bar
                       _buildSearchBar(),
                       const SizedBox(height: 20),
+                      // Category Filter
                       _buildCategoryFilter(),
                       const SizedBox(height: 24),
-                      if (featuredEvents.isNotEmpty)
-                        _buildSection(
-                          title: 'Dành cho bạn',
-                          child: SizedBox(
-                            height: 220,
-                            child: ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              padding: const EdgeInsets.symmetric(horizontal: 20),
-                              itemCount: featuredEvents.length,
-                              itemBuilder: (context, index) {
-                                return EventCardLarge(event: featuredEvents[index]);
-                              },
+                      
+                      // Error message
+                      if (eventService.error != null)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.error_outline, color: Colors.red.shade700),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Lỗi: ${eventService.error}',
+                                    style: TextStyle(color: Colors.red.shade700),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                      const SizedBox(height: 24),
-                      if (featuredEvents.isNotEmpty)
+                      
+                      // Featured Events Section
+                      if (featuredEvents.isNotEmpty) ...[
                         _buildSection(
                           title: 'Sự kiện nổi bật',
                           child: SizedBox(
@@ -192,7 +136,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                         ),
-                      const SizedBox(height: 24),
+                        const SizedBox(height: 24),
+                      ],
+                      
+                      // Upcoming Events Section
                       _buildSection(
                         title: 'Sự kiện sắp tới',
                         child: Padding(
@@ -200,15 +147,21 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Column(
                             children: [
                               ...displayedUpcomingEvents.map((event) => EventListItem(event: event)),
+                              // Load More Button
                               if (hasMoreEvents) ...[
                                 const SizedBox(height: 16),
                                 _buildLoadMoreButton(),
                               ],
+                              if (displayedUpcomingEvents.isEmpty)
+                                const Padding(
+                                  padding: EdgeInsets.all(20),
+                                  child: Text('Không có sự kiện nào'),
+                                ),
                             ],
                           ),
                         ),
                       ),
-                      const SizedBox(height: 80),
+                      const SizedBox(height: 80), // Bottom padding for navigation bar
                     ],
                   ),
                 ),
@@ -297,16 +250,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCategoryFilter() {
-    final categories = ['Tất cả', 'Âm nhạc', 'Công nghệ', 'Nghệ thuật', 'Thể thao'];
-
+    final eventService = context.read<EventService>();
+    
     return SizedBox(
       height: 45,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        itemCount: categories.length,
+        itemCount: EventService.categories.length,
         itemBuilder: (context, index) {
-          final category = categories[index];
+          final category = EventService.categories[index];
           IconData? icon;
 
           switch (category) {
@@ -325,6 +278,9 @@ class _HomeScreenState extends State<HomeScreen> {
             case 'Thể thao':
               icon = Icons.sports_soccer;
               break;
+            case 'Nghề nghiệp':
+              icon = Icons.work;
+              break;
           }
 
           return Padding(
@@ -337,6 +293,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 setState(() {
                   selectedCategory = category;
                 });
+                eventService.setCategory(category);
               },
             ),
           );

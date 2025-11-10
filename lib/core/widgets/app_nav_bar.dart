@@ -31,6 +31,7 @@ class AppNavBar extends StatelessWidget {
       selectedColor = const Color(0xFF6366F1);
     } else if (role == 'club_admin') {
       // Club admin navigation
+      // Club navigation
       items = const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Trang Chủ'),
         BottomNavigationBarItem(icon: Icon(Icons.event), label: 'Sự Kiện'),

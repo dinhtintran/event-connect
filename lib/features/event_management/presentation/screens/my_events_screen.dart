@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:event_connect/features/event_management/domain/models/event.dart';
 import 'package:event_connect/features/event_management/data/api/event_api.dart';
+import 'package:event_connect/features/event_management/domain/services/event_service.dart';
 import 'package:event_connect/features/event_management/presentation/screens/event_detail_screen.dart';
 import 'package:event_connect/app_routes.dart';
 
@@ -29,7 +31,9 @@ class _MyEventsScreenState extends State<MyEventsScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _loadEvents();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<EventService>().loadMyRegisteredEvents();
+    });
   }
 
   @override
@@ -39,133 +43,56 @@ class _MyEventsScreenState extends State<MyEventsScreen>
     super.dispose();
   }
 
-  Future<void> _loadEvents() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      // Get access token
-      final accessToken = await _storage.read(key: 'auth_access');
-
-      if (accessToken == null) {
-        setState(() {
-          _errorMessage = 'Bạn cần đăng nhập để xem sự kiện của mình';
-          _isLoading = false;
-        });
-        return;
-      }
-
-      // Get user's registered events
-      final result = await _eventApi.getMyEvents(accessToken: accessToken);
-
-      if (result['status'] == 200) {
-        final data = result['body'];
-
-        setState(() {
-          if (data['results'] != null) {
-            // Parse registrations and extract events
-            _allRegisteredEvents = (data['results'] as List)
-                .map((registration) {
-                  // Each registration has an 'event' field
-                  if (registration['event'] != null) {
-                    return Event.fromJson(registration['event']);
-                  }
-                  return null;
-                })
-                .whereType<Event>()
-                .toList();
-          }
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _errorMessage = 'Không thể tải sự kiện đã đăng ký';
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Lỗi: $e';
-        _isLoading = false;
-      });
-    }
-  }
-
-  List<Event> get upcomingEvents {
+  List<Event> getUpcomingEvents(EventService eventService) {
     final now = DateTime.now();
-    var events = _allRegisteredEvents.where((event) => event.date.isAfter(now)).toList();
-
-    // Apply search filter
-    if (searchController.text.isNotEmpty) {
-      events = events.where((event) =>
-          event.title.toLowerCase().contains(searchController.text.toLowerCase())
-      ).toList();
-    }
-
-    return events;
+    return eventService.myRegisteredEvents
+        .where((event) => event.date.isAfter(now))
+        .toList();
   }
 
-  List<Event> get pastEvents {
+  List<Event> getPastEvents(EventService eventService) {
     final now = DateTime.now();
-    var events = _allRegisteredEvents.where((event) => event.date.isBefore(now)).toList();
-
-    // Apply search filter
-    if (searchController.text.isNotEmpty) {
-      events = events.where((event) =>
-          event.title.toLowerCase().contains(searchController.text.toLowerCase())
-      ).toList();
-    }
-
-    return events;
+    return eventService.myRegisteredEvents
+        .where((event) => event.date.isBefore(now))
+        .toList();
   }
 
-  List<Event> get savedEvents {
-    // TODO: Need separate API for saved/bookmarked events
-    // For now, return empty list as we're only showing registered events
+  List<Event> getSavedEvents(EventService eventService) {
+    // TODO: Implement saved events feature
+    // For now, return empty list
     return [];
   }
 
   @override
   Widget build(BuildContext context) {
+    final eventService = context.watch<EventService>();
+    final upcomingEvents = getUpcomingEvents(eventService);
+    final pastEvents = getPastEvents(eventService);
+    final savedEvents = getSavedEvents(eventService);
+    
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Column(
+        child: eventService.isLoading && eventService.myRegisteredEvents.isEmpty
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
           children: [
             _buildHeader(),
             _buildSearchBar(),
             const SizedBox(height: 16),
             _buildTabs(),
             Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _errorMessage != null
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                              const SizedBox(height: 16),
-                              Text(_errorMessage!),
-                              const SizedBox(height: 16),
-                              ElevatedButton.icon(
-                                onPressed: _loadEvents,
-                                icon: const Icon(Icons.refresh),
-                                label: const Text('Thử lại'),
-                              ),
-                            ],
-                          ),
-                        )
-                      : TabBarView(
-                          controller: _tabController,
-                          children: [
-                            _buildEventsList(upcomingEvents, isUpcoming: true),
-                            _buildEventsList(pastEvents, isUpcoming: false),
-                            _buildEventsList(savedEvents, isUpcoming: true, isSaved: true),
-                          ],
-                        ),
+              child: RefreshIndicator(
+                onRefresh: () => context.read<EventService>().loadMyRegisteredEvents(),
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildEventsList(upcomingEvents, isUpcoming: true),
+                    _buildEventsList(pastEvents, isUpcoming: false),
+                    _buildEventsList(savedEvents, isUpcoming: true, isSaved: true),
+                  ],
+                ),
+              ),
             ),
           ],
         ),

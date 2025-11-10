@@ -4,6 +4,7 @@ import 'package:event_connect/features/event_management/domain/models/event.dart
 import 'package:event_connect/features/event_approval/presentation/widgets/approval_event_card.dart';
 import 'package:event_connect/features/event_approval/presentation/widgets/approval_dialog.dart';
 import 'package:event_connect/features/authentication/domain/services/auth_service.dart';
+import 'package:event_connect/features/admin_dashboard/domain/services/admin_service.dart';
 import 'package:event_connect/core/widgets/app_nav_bar.dart';
 import 'package:event_connect/app_routes.dart';
 
@@ -16,9 +17,42 @@ class ApprovalScreen extends StatefulWidget {
 
 class _ApprovalScreenState extends State<ApprovalScreen> {
   int _selectedIndex = 1; // Approval tab is selected
+  bool _isLoading = true;
+  List<Event> _pendingEvents = [];
 
-  // Sample pending events data
-  final List<Event> _pendingEvents = [
+  @override
+  void initState() {
+    super.initState();
+    _loadPendingEvents();
+  }
+
+  Future<void> _loadPendingEvents() async {
+    setState(() => _isLoading = true);
+    
+    final adminService = Provider.of<AdminService>(context, listen: false);
+    final response = await adminService.fetchPendingApprovals();
+    
+    if (response['status'] == 200 && mounted) {
+      final results = response['body']['results'] as List<dynamic>;
+      setState(() {
+        _pendingEvents = results
+            .map((json) => Event.fromJson(json['event'] as Map<String, dynamic>))
+            .toList();
+        _isLoading = false;
+      });
+    } else if (mounted) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Không thể tải danh sách sự kiện. Vui lòng thử lại.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Removed sample data - now using real data from API
+  /*final List<Event> _pendingEvents = [
     Event(
       id: '1',
       title: 'Hội thảo AI: Tương lai công nghệ',
@@ -55,7 +89,7 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     ),
-  ];
+  ];*/
 
   void _handleViewDetails(Event event) {
     // TODO: Navigate to event details page
@@ -93,26 +127,61 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
       context: context,
       builder: (context) => ApprovalDialog(
         event: event,
-        onApprove: (locationVerified, timeVerified, descriptionVerified, note) {
-          // TODO: Call API to approve event
+        onApprove: (locationVerified, timeVerified, descriptionVerified, note) async {
+          Navigator.pop(context); // Close dialog first
+          
+          // Show loading
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Đã phê duyệt sự kiện "${event.title}"'),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
+            const SnackBar(
+              content: Row(
+                children: [
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                  SizedBox(width: 16),
+                  Text('Đang phê duyệt...'),
+                ],
+              ),
+              duration: Duration(seconds: 2),
             ),
           );
           
-          // Remove from pending list
-          setState(() {
-            _pendingEvents.removeWhere((e) => e.id == event.id);
-          });
+          final adminService = Provider.of<AdminService>(context, listen: false);
+          final success = await adminService.approveEvent(event.id, comments: note);
+          
+          if (success && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Đã phê duyệt sự kiện "${event.title}"'),
+                backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+            
+            // Reload pending events
+            _loadPendingEvents();
+          } else if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Không thể phê duyệt sự kiện. Vui lòng thử lại.'),
+                backgroundColor: Colors.red,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
         },
       ),
     );
   }
 
   void _handleReject(Event event) {
+    final reasonController = TextEditingController();
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -127,8 +196,9 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
             Text('Bạn có chắc chắn muốn từ chối sự kiện "${event.title}"?'),
             const SizedBox(height: 16),
             TextField(
+              controller: reasonController,
               decoration: InputDecoration(
-                labelText: 'Lý do từ chối',
+                labelText: 'Lý do từ chối (bắt buộc)',
                 hintText: 'Nhập lý do từ chối...',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -147,21 +217,64 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
             ),
           ),
           ElevatedButton(
-            onPressed: () {
-              // TODO: Call API to reject event
-              Navigator.pop(context);
+            onPressed: () async {
+              final reason = reasonController.text.trim();
+              if (reason.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Vui lòng nhập lý do từ chối'),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+                return;
+              }
+              
+              Navigator.pop(context); // Close dialog first
+              
+              // Show loading
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Đã từ chối sự kiện "${event.title}"'),
-                  backgroundColor: Colors.red,
-                  behavior: SnackBarBehavior.floating,
+                const SnackBar(
+                  content: Row(
+                    children: [
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      Text('Đang từ chối...'),
+                    ],
+                  ),
+                  duration: Duration(seconds: 2),
                 ),
               );
               
-              // Remove from pending list
-              setState(() {
-                _pendingEvents.removeWhere((e) => e.id == event.id);
-              });
+              final adminService = Provider.of<AdminService>(context, listen: false);
+              final success = await adminService.rejectEvent(event.id, reason: reason);
+              
+              if (success && mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Đã từ chối sự kiện "${event.title}"'),
+                    backgroundColor: Colors.red,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+                
+                // Reload pending events
+                _loadPendingEvents();
+              } else if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Không thể từ chối sự kiện. Vui lòng thử lại.'),
+                    backgroundColor: Colors.red,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
@@ -218,7 +331,12 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
                 ElevatedButton(
                   onPressed: () {
                     if (auth.isAuthenticated) {
-                      Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+                      // Navigate back based on role
+                      if (role == 'club_admin') {
+                        Navigator.of(context).pushReplacementNamed(AppRoutes.clubHome);
+                      } else {
+                        Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+                      }
                     } else {
                       Navigator.of(context).pushReplacementNamed(AppRoutes.login);
                     }
@@ -246,6 +364,11 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.black),
+            onPressed: _loadPendingEvents,
+            tooltip: 'Tải lại',
+          ),
+          IconButton(
             icon: const Icon(Icons.notifications_outlined, color: Colors.black),
             onPressed: () {
               // TODO: Navigate to notifications
@@ -253,7 +376,9 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
           ),
         ],
       ),
-      body: _pendingEvents.isEmpty
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _pendingEvents.isEmpty
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,

@@ -12,6 +12,9 @@ import 'package:event_connect/features/event_approval/event_approval.dart';
 import 'package:event_connect/features/admin_dashboard/admin_dashboard.dart';
 import 'package:event_connect/features/profile/presentation/screens/profile_screen.dart';
 import 'package:event_connect/features/notifications/presentation/screens/notifications_screen.dart';
+import 'package:event_connect/features/event_management/data/api/event_api.dart';
+import 'package:event_connect/features/event_management/data/repositories/event_repository.dart';
+import 'package:event_connect/features/event_management/domain/services/event_service.dart';
 
 void main() {
   runApp(const EventConnectApp());
@@ -26,12 +29,19 @@ class EventConnectApp extends StatelessWidget {
     final dio = Dio(BaseOptions(baseUrl: AppConfig.apiBaseUrl));
     final tokenStorage = TokenStorage();
     dio.interceptors.add(TokenInterceptor(tokenStorage: tokenStorage));
-    final api = AuthApi(dio: dio);
-    final repo = AuthRepository(api: api, tokenStorage: tokenStorage);
+    
+    // Auth
+    final authApi = AuthApi(dio: dio);
+    final authRepo = AuthRepository(api: authApi, tokenStorage: tokenStorage);
+    
+    // Event Management
+    final eventApi = EventApi(dio: dio);
+    final eventRepo = EventRepository(api: eventApi);
 
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthService(repository: repo)),
+        ChangeNotifierProvider(create: (_) => AuthService(repository: authRepo)),
+        ChangeNotifierProvider(create: (_) => EventService(repository: eventRepo)),
       ],
       child: MaterialApp(
         title: 'Event Connect',
