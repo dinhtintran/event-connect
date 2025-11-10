@@ -119,5 +119,47 @@ class EventApi {
       };
     }
   }
+
+  /// Get user's registered events
+  Future<Map<String, dynamic>> getMyEvents({
+    required String accessToken,
+    bool? upcoming,
+    String? status,
+    int page = 1,
+  }) async {
+    _dbg('GET /api/event_management/registrations/my-events/');
+
+    final queryParams = <String, dynamic>{
+      'page': page,
+    };
+
+    if (upcoming != null) queryParams['upcoming'] = upcoming.toString();
+    if (status != null) queryParams['status'] = status;
+
+    try {
+      final res = await dio.get(
+        '/api/event_management/registrations/my-events/',
+        queryParameters: queryParams,
+        options: Options(
+          headers: {'Authorization': 'Bearer $accessToken'},
+        ),
+      );
+      _dbg('response ${res.statusCode} ${res.requestOptions.uri}');
+      return {'status': res.statusCode, 'body': res.data};
+    } on DioException catch (e) {
+      _dbg(
+          'DioException on getMyEvents: type=${e.type} uri=${e.requestOptions.uri} status=${e.response?.statusCode} error=${e.message}');
+      return {
+        'status': e.response?.statusCode ?? 0,
+        'body': e.response?.data ?? {'detail': e.message}
+      };
+    } catch (e) {
+      _dbg('Exception on getMyEvents: $e');
+      return {
+        'status': 0,
+        'body': {'detail': e.toString()}
+      };
+    }
+  }
 }
 

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:event_connect/features/event_management/domain/models/event.dart';
-import 'package:event_connect/core/utils/dummy_data.dart';
+import 'package:event_connect/features/event_management/data/api/event_api.dart';
 import 'package:event_connect/features/event_management/presentation/widgets/category_chip.dart';
 import 'package:event_connect/features/event_management/presentation/screens/event_detail_screen.dart';
 
@@ -12,19 +12,72 @@ class ExploreScreen extends StatefulWidget {
 }
 
 class _ExploreScreenState extends State<ExploreScreen> {
+  final _eventApi = EventApi();
+
   String selectedCategory = 'Tất cả';
   final TextEditingController searchController = TextEditingController();
   bool isGridView = true;
-  int displayedEventsCount = 4; // Hiển thị 4 sự kiện ban đầu
+  int displayedEventsCount = 4;
   bool isLoadingMore = false;
   
   // Filter states
   Set<String> selectedCategories = {};
   DateTimeRange? selectedDateRange;
 
+  // API data
+  List<Event> _allEvents = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadEvents();
+  }
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadEvents() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final result = await _eventApi.getUpcomingEvents(page: 1);
+
+      if (result['status'] == 200) {
+        final data = result['body'];
+
+        setState(() {
+          if (data['results'] != null) {
+            _allEvents = (data['results'] as List)
+                .map((json) => Event.fromJson(json))
+                .toList();
+          }
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = 'Không thể tải sự kiện';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Lỗi: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
   List<Event> get filteredEvents {
-    List<Event> events = DummyData.events;
-    
+    List<Event> events = _allEvents;
+
     // Filter by category chip
     if (selectedCategory != 'Tất cả') {
       events = events.where((event) => event.category == selectedCategory).toList();
@@ -81,37 +134,53 @@ class _ExploreScreenState extends State<ExploreScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Header
             _buildHeader(),
-            // Search Bar
             _buildSearchBar(),
             const SizedBox(height: 20),
-            // Category Section
             _buildCategorySection(),
             const SizedBox(height: 16),
-            // Filter and View Toggle
             _buildFilterBar(),
             const SizedBox(height: 16),
-            // Events Grid/List
             Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    if (isGridView)
-                      _buildGridView()
-                    else
-                      _buildListView(),
-                    // Load More Button
-                    if (hasMoreEvents) ...[
-                      Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: _buildLoadMoreButton(),
-                      ),
-                    ],
-                    const SizedBox(height: 80),
-                  ],
-                ),
-              ),
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _errorMessage != null
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                              const SizedBox(height: 16),
+                              Text(_errorMessage!),
+                              const SizedBox(height: 16),
+                              ElevatedButton.icon(
+                                onPressed: _loadEvents,
+                                icon: const Icon(Icons.refresh),
+                                label: const Text('Thử lại'),
+                              ),
+                            ],
+                          ),
+                        )
+                      : RefreshIndicator(
+                          onRefresh: _loadEvents,
+                          child: SingleChildScrollView(
+                            child: Column(
+                              children: [
+                                if (isGridView)
+                                  _buildGridView()
+                                else
+                                  _buildListView(),
+                                if (hasMoreEvents) ...[
+                                  Padding(
+                                    padding: const EdgeInsets.all(20),
+                                    child: _buildLoadMoreButton(),
+                                  ),
+                                ],
+                                const SizedBox(height: 80),
+                              ],
+                            ),
+                          ),
+                        ),
             ),
           ],
         ),
@@ -191,6 +260,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   Widget _buildCategorySection() {
+    final categories = ['Tất cả', 'Âm nhạc', 'Công nghệ', 'Nghệ thuật', 'Thể thao'];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -211,9 +282,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            itemCount: DummyData.categories.length,
+            itemCount: categories.length,
             itemBuilder: (context, index) {
-              final category = DummyData.categories[index];
+              final category = categories[index];
               return Padding(
                 padding: const EdgeInsets.only(right: 12),
                 child: CategoryChip(
@@ -222,7 +293,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   onTap: () {
                     setState(() {
                       selectedCategory = category;
-                      displayedEventsCount = 4; // Reset khi đổi category
+                      displayedEventsCount = 4;
                     });
                   },
                 ),
@@ -806,12 +877,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
       contentPadding: EdgeInsets.zero,
       controlAffinity: ListTileControlAffinity.leading,
     );
-  }
-
-  @override
-  void dispose() {
-    searchController.dispose();
-    super.dispose();
   }
 }
 

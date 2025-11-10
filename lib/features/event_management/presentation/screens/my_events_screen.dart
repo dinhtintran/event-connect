@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:event_connect/features/event_management/domain/models/event.dart';
-import 'package:event_connect/core/utils/dummy_data.dart';
+import 'package:event_connect/features/event_management/data/api/event_api.dart';
 import 'package:event_connect/features/event_management/presentation/screens/event_detail_screen.dart';
+import 'package:event_connect/app_routes.dart';
 
 class MyEventsScreen extends StatefulWidget {
   const MyEventsScreen({super.key});
@@ -13,13 +15,21 @@ class MyEventsScreen extends StatefulWidget {
 
 class _MyEventsScreenState extends State<MyEventsScreen>
     with SingleTickerProviderStateMixin {
+  final _eventApi = EventApi();
+  final _storage = const FlutterSecureStorage();
   late TabController _tabController;
   final TextEditingController searchController = TextEditingController();
+
+  // API data
+  List<Event> _allRegisteredEvents = [];
+  bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _loadEvents();
   }
 
   @override
@@ -29,23 +39,92 @@ class _MyEventsScreenState extends State<MyEventsScreen>
     super.dispose();
   }
 
+  Future<void> _loadEvents() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      // Get access token
+      final accessToken = await _storage.read(key: 'auth_access');
+
+      if (accessToken == null) {
+        setState(() {
+          _errorMessage = 'Bạn cần đăng nhập để xem sự kiện của mình';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Get user's registered events
+      final result = await _eventApi.getMyEvents(accessToken: accessToken);
+
+      if (result['status'] == 200) {
+        final data = result['body'];
+
+        setState(() {
+          if (data['results'] != null) {
+            // Parse registrations and extract events
+            _allRegisteredEvents = (data['results'] as List)
+                .map((registration) {
+                  // Each registration has an 'event' field
+                  if (registration['event'] != null) {
+                    return Event.fromJson(registration['event']);
+                  }
+                  return null;
+                })
+                .whereType<Event>()
+                .toList();
+          }
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = 'Không thể tải sự kiện đã đăng ký';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Lỗi: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
   List<Event> get upcomingEvents {
     final now = DateTime.now();
-    return DummyData.events
-        .where((event) => event.date.isAfter(now))
-        .toList();
+    var events = _allRegisteredEvents.where((event) => event.date.isAfter(now)).toList();
+
+    // Apply search filter
+    if (searchController.text.isNotEmpty) {
+      events = events.where((event) =>
+          event.title.toLowerCase().contains(searchController.text.toLowerCase())
+      ).toList();
+    }
+
+    return events;
   }
 
   List<Event> get pastEvents {
     final now = DateTime.now();
-    return DummyData.events
-        .where((event) => event.date.isBefore(now))
-        .toList();
+    var events = _allRegisteredEvents.where((event) => event.date.isBefore(now)).toList();
+
+    // Apply search filter
+    if (searchController.text.isNotEmpty) {
+      events = events.where((event) =>
+          event.title.toLowerCase().contains(searchController.text.toLowerCase())
+      ).toList();
+    }
+
+    return events;
   }
 
   List<Event> get savedEvents {
-    // For demo purposes, return some events
-    return DummyData.events.take(2).toList();
+    // TODO: Need separate API for saved/bookmarked events
+    // For now, return empty list as we're only showing registered events
+    return [];
   }
 
   @override
@@ -55,23 +134,38 @@ class _MyEventsScreenState extends State<MyEventsScreen>
       body: SafeArea(
         child: Column(
           children: [
-            // Header
             _buildHeader(),
-            // Search Bar
             _buildSearchBar(),
             const SizedBox(height: 16),
-            // Tabs
             _buildTabs(),
-            // Content
             Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildEventsList(upcomingEvents, isUpcoming: true),
-                  _buildEventsList(pastEvents, isUpcoming: false),
-                  _buildEventsList(savedEvents, isUpcoming: true, isSaved: true),
-                ],
-              ),
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _errorMessage != null
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                              const SizedBox(height: 16),
+                              Text(_errorMessage!),
+                              const SizedBox(height: 16),
+                              ElevatedButton.icon(
+                                onPressed: _loadEvents,
+                                icon: const Icon(Icons.refresh),
+                                label: const Text('Thử lại'),
+                              ),
+                            ],
+                          ),
+                        )
+                      : TabBarView(
+                          controller: _tabController,
+                          children: [
+                            _buildEventsList(upcomingEvents, isUpcoming: true),
+                            _buildEventsList(pastEvents, isUpcoming: false),
+                            _buildEventsList(savedEvents, isUpcoming: true, isSaved: true),
+                          ],
+                        ),
             ),
           ],
         ),
@@ -104,10 +198,15 @@ class _MyEventsScreenState extends State<MyEventsScreen>
                 child: const Icon(Icons.notifications_outlined, size: 24),
               ),
               const SizedBox(width: 12),
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: Colors.grey.shade200,
-                child: const Icon(Icons.person, color: Colors.grey),
+              GestureDetector(
+                onTap: () {
+                  Navigator.pushNamed(context, AppRoutes.profile);
+                },
+                child: CircleAvatar(
+                  radius: 20,
+                  backgroundColor: Colors.grey.shade200,
+                  child: const Icon(Icons.person, color: Colors.grey),
+                ),
               ),
             ],
           ),
@@ -137,8 +236,22 @@ class _MyEventsScreenState extends State<MyEventsScreen>
                   border: InputBorder.none,
                   hintStyle: TextStyle(color: Colors.grey),
                 ),
+                onChanged: (value) {
+                  setState(() {}); // Rebuild to apply search filter
+                },
               ),
             ),
+            if (searchController.text.isNotEmpty)
+              IconButton(
+                icon: const Icon(Icons.clear, color: Colors.grey, size: 20),
+                onPressed: () {
+                  setState(() {
+                    searchController.clear();
+                  });
+                },
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
           ],
         ),
       ),
@@ -193,48 +306,60 @@ class _MyEventsScreenState extends State<MyEventsScreen>
   Widget _buildEventsList(List<Event> events,
       {required bool isUpcoming, bool isSaved = false}) {
     if (events.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.event_busy,
-              size: 64,
-              color: Colors.grey.shade300,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Không có sự kiện nào',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey.shade600,
+      return RefreshIndicator(
+        onRefresh: _loadEvents,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height * 0.5,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.event_busy,
+                    size: 64,
+                    color: Colors.grey.shade300,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Không có sự kiện nào',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(20),
-      itemCount: events.length,
-      itemBuilder: (context, index) {
-        return GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => EventDetailScreen(event: events[index]),
-              ),
-            );
-          },
-          child: MyEventCard(
-            event: events[index],
-            isUpcoming: isUpcoming,
-            isSaved: isSaved,
-          ),
-        );
-      },
+    return RefreshIndicator(
+      onRefresh: _loadEvents,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(20),
+        itemCount: events.length,
+        itemBuilder: (context, index) {
+          return GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EventDetailScreen(event: events[index]),
+                ),
+              );
+            },
+            child: MyEventCard(
+              event: events[index],
+              isUpcoming: isUpcoming,
+              isSaved: isSaved,
+            ),
+          );
+        },
+      ),
     );
   }
 }
