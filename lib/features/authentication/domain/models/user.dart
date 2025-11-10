@@ -8,11 +8,14 @@ class User {
 
   factory User.fromJson(Map<String, dynamic> json) {
     final profileJson = json['profile'] as Map<String, dynamic>? ?? {};
+    // Backend returns role at user level, not in profile
+    // So we need to pass it to Profile.fromJson
+    final roleFromUser = json['role'] as String?;
     return User(
       id: json['id'] is int ? json['id'] : int.tryParse('${json['id']}') ?? 0,
       username: json['username'] ?? '',
       email: json['email'],
-      profile: Profile.fromJson(profileJson),
+      profile: Profile.fromJson(profileJson, roleFromUser: roleFromUser),
     );
   }
 }
@@ -27,9 +30,10 @@ class Profile {
 
   Profile({required this.role, required this.displayName, required this.bio, this.studentId, this.clubName, this.schoolCode});
 
-  factory Profile.fromJson(Map<String, dynamic> json) {
+  factory Profile.fromJson(Map<String, dynamic> json, {String? roleFromUser}) {
+    // Priority: roleFromUser (from user level) > json['role'] (from profile) > default 'student'
     return Profile(
-      role: json['role'] ?? 'student',
+      role: roleFromUser ?? json['role'] ?? 'student',
       displayName: json['display_name'] ?? '',
       bio: json['bio'] ?? '',
       studentId: json['student_id'] as String?,

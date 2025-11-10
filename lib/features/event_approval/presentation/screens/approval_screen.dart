@@ -177,15 +177,30 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
     setState(() {
       _selectedIndex = index;
     });
-    // TODO: Navigate to different screens based on index
+    // Navigate to the appropriate screen for admin tabs.
+    // Index mapping (as defined in AppNavBar for system_admin):
+    // 0 -> Dashboard (admin home)
+    // 1 -> Approvals (stay on approval screen)
+    // 2 -> Reports (not implemented)
+    // 3 -> Profile (not implemented)
+    if (index == 0) {
+      // Navigate back to admin home
+      Navigator.of(context).pushReplacementNamed(AppRoutes.admin);
+      return;
+    }
+    if (index == 1) {
+      // Already on approval screen, do nothing
+      return;
+    }
+    // TODO: Implement navigation for Reports (index 2) and Profile (index 3)
   }
 
   @override
   Widget build(BuildContext context) {
-    // Authorization guard: only allow authenticated users with role 'school'
+    // Authorization guard: only allow authenticated users with role 'school' or 'system_admin'
     final auth = Provider.of<AuthService>(context);
     final role = auth.user?.profile.role;
-    if (!auth.isAuthenticated || role != 'school') {
+    if (!auth.isAuthenticated || (role != 'system_admin' && role != 'admin')) {
       return Scaffold(
         appBar: AppBar(
           backgroundColor: Colors.white,
@@ -205,7 +220,12 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
                 ElevatedButton(
                   onPressed: () {
                     if (auth.isAuthenticated) {
-                      Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+                      // Navigate back based on role
+                      if (role == 'club_admin') {
+                        Navigator.of(context).pushReplacementNamed(AppRoutes.clubHome);
+                      } else {
+                        Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+                      }
                     } else {
                       Navigator.of(context).pushReplacementNamed(AppRoutes.login);
                     }
@@ -277,7 +297,7 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
       bottomNavigationBar: AppNavBar(
         currentIndex: _selectedIndex,
         onTap: _onNavigationTapped,
-        roleOverride: 'school',
+        roleOverride: 'system_admin',
       ),
     );
   }

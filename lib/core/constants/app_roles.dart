@@ -8,8 +8,8 @@ class RoleOption {
 /// Update the `value` items to match the backend's accepted role identifiers.
 const List<RoleOption> roleOptions = [
   // label -> value (value sent to backend)
-  RoleOption('Quản trị viên trường', 'school'),
-  RoleOption('Câu lạc bộ', 'club'),
+  RoleOption('Quản trị viên trường', 'system_admin'),
+  RoleOption('Câu lạc bộ', 'club_admin'),
   RoleOption('Người dùng thông thường', 'student'),
 ];
 

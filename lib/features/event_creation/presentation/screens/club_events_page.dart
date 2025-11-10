@@ -226,7 +226,7 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
       bottomNavigationBar: AppNavBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
-        roleOverride: 'club',
+        roleOverride: 'club_admin',
       ),
     );
   }

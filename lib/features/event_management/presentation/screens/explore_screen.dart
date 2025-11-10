@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:event_connect/features/event_management/domain/models/event.dart';
-import 'package:event_connect/core/utils/dummy_data.dart';
+import 'package:event_connect/features/event_management/domain/services/event_service.dart';
 import 'package:event_connect/features/event_management/presentation/widgets/category_chip.dart';
 import 'package:event_connect/features/event_management/presentation/screens/event_detail_screen.dart';
 
@@ -22,8 +23,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Set<String> selectedCategories = {};
   DateTimeRange? selectedDateRange;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<EventService>().loadAllEvents();
+    });
+  }
+
   List<Event> get filteredEvents {
-    List<Event> events = DummyData.events;
+    final eventService = context.read<EventService>();
+    List<Event> events = eventService.allEvents;
     
     // Filter by category chip
     if (selectedCategory != 'Tất cả') {
@@ -211,9 +221,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            itemCount: DummyData.categories.length,
+            itemCount: EventService.categories.length,
             itemBuilder: (context, index) {
-              final category = DummyData.categories[index];
+              final category = EventService.categories[index];
               return Padding(
                 padding: const EdgeInsets.only(right: 12),
                 child: CategoryChip(
@@ -224,6 +234,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       selectedCategory = category;
                       displayedEventsCount = 4; // Reset khi đổi category
                     });
+                    context.read<EventService>().setCategory(category);
                   },
                 ),
               );

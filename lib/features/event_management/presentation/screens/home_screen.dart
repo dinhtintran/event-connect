@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:event_connect/features/event_management/domain/models/event.dart';
-import 'package:event_connect/core/utils/dummy_data.dart';
+import 'package:event_connect/features/event_management/domain/services/event_service.dart';
 import 'package:event_connect/features/event_management/presentation/widgets/category_chip.dart';
 import 'package:event_connect/features/event_management/presentation/widgets/event_card_large.dart';
 import 'package:event_connect/features/event_management/presentation/widgets/event_list_item.dart';
@@ -18,21 +19,29 @@ class _HomeScreenState extends State<HomeScreen> {
   int displayedUpcomingEventsCount = 3; // Hiển thị 3 sự kiện ban đầu
   bool isLoadingMore = false;
 
-  List<Event> get filteredEvents {
-    if (selectedCategory == 'Tất cả') {
-      return DummyData.events;
-    }
-    return DummyData.events
-        .where((event) => event.category == selectedCategory)
-        .toList();
+  @override
+  void initState() {
+    super.initState();
+    // Load data khi màn hình được tạo
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadInitialData();
+    });
   }
 
-  List<Event> get featuredEvents {
-    return DummyData.events.where((event) => event.isFeatured).toList();
+  Future<void> _loadInitialData() async {
+    final eventService = context.read<EventService>();
+    await Future.wait([
+      eventService.loadAllEvents(),
+      eventService.loadFeaturedEvents(),
+    ]);
   }
 
   List<Event> get allUpcomingEvents {
-    return DummyData.events.where((event) => !event.isFeatured).toList();
+    final eventService = context.watch<EventService>();
+    final now = DateTime.now();
+    return eventService.filteredEvents
+        .where((event) => event.date.isAfter(now) && !event.isFeatured)
+        .toList();
   }
 
   List<Event> get displayedUpcomingEvents {
@@ -59,76 +68,102 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final eventService = context.watch<EventService>();
+    final featuredEvents = eventService.featuredEvents;
+    
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Column(
+        child: eventService.isLoading && eventService.allEvents.isEmpty
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
           children: [
             // Header
             _buildHeader(),
             // Content
             Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Search Bar
-                    _buildSearchBar(),
-                    const SizedBox(height: 20),
-                    // Category Filter
-                    _buildCategoryFilter(),
-                    const SizedBox(height: 24),
-                    // Featured Events Section
-                    _buildSection(
-                      title: 'Dành cho bạn',
-                      child: SizedBox(
-                        height: 220,
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
+              child: RefreshIndicator(
+                onRefresh: _loadInitialData,
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Search Bar
+                      _buildSearchBar(),
+                      const SizedBox(height: 20),
+                      // Category Filter
+                      _buildCategoryFilter(),
+                      const SizedBox(height: 24),
+                      
+                      // Error message
+                      if (eventService.error != null)
+                        Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
-                          itemCount: featuredEvents.length,
-                          itemBuilder: (context, index) {
-                            return EventCardLarge(event: featuredEvents[index]);
-                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.error_outline, color: Colors.red.shade700),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Lỗi: ${eventService.error}',
+                                    style: TextStyle(color: Colors.red.shade700),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    // Highlighted Events Section
-                    _buildSection(
-                      title: 'Sự kiện nổi bật',
-                      child: SizedBox(
-                        height: 220,
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
+                      
+                      // Featured Events Section
+                      if (featuredEvents.isNotEmpty) ...[
+                        _buildSection(
+                          title: 'Sự kiện nổi bật',
+                          child: SizedBox(
+                            height: 220,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              itemCount: featuredEvents.length,
+                              itemBuilder: (context, index) {
+                                return EventCardLarge(event: featuredEvents[index]);
+                              },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                      
+                      // Upcoming Events Section
+                      _buildSection(
+                        title: 'Sự kiện sắp tới',
+                        child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
-                          itemCount: featuredEvents.length,
-                          itemBuilder: (context, index) {
-                            return EventCardLarge(event: featuredEvents[index]);
-                          },
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    // Upcoming Events Section
-                    _buildSection(
-                      title: 'Sự kiện sắp tới',
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Column(
-                          children: [
-              ...displayedUpcomingEvents.map((event) => EventListItem(event: event)),
-                            // Load More Button
-                            if (hasMoreEvents) ...[
-                              const SizedBox(height: 16),
-                              _buildLoadMoreButton(),
+                          child: Column(
+                            children: [
+                              ...displayedUpcomingEvents.map((event) => EventListItem(event: event)),
+                              // Load More Button
+                              if (hasMoreEvents) ...[
+                                const SizedBox(height: 16),
+                                _buildLoadMoreButton(),
+                              ],
+                              if (displayedUpcomingEvents.isEmpty)
+                                const Padding(
+                                  padding: EdgeInsets.all(20),
+                                  child: Text('Không có sự kiện nào'),
+                                ),
                             ],
-                          ],
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 80), // Bottom padding for navigation bar
-                  ],
+                      const SizedBox(height: 80), // Bottom padding for navigation bar
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -205,14 +240,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCategoryFilter() {
+    final eventService = context.read<EventService>();
+    
     return SizedBox(
       height: 45,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        itemCount: DummyData.categories.length,
+        itemCount: EventService.categories.length,
         itemBuilder: (context, index) {
-          final category = DummyData.categories[index];
+          final category = EventService.categories[index];
           IconData? icon;
           
           switch (category) {
@@ -231,6 +268,9 @@ class _HomeScreenState extends State<HomeScreen> {
             case 'Thể thao':
               icon = Icons.sports_soccer;
               break;
+            case 'Nghề nghiệp':
+              icon = Icons.work;
+              break;
           }
 
           return Padding(
@@ -243,6 +283,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 setState(() {
                   selectedCategory = category;
                 });
+                eventService.setCategory(category);
               },
             ),
           );

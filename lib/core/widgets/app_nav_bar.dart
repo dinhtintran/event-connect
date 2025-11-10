@@ -20,8 +20,8 @@ class AppNavBar extends StatelessWidget {
     List<BottomNavigationBarItem> items;
     Color selectedColor = const Color(0xFF5669FF);
 
-    if (role == 'school' || role == 'admin') {
-      // School / admin navigation
+    if (role == 'school' || role == 'system_admin' || role == 'admin') {
+      // School / system admin navigation
       items = const [
         BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Trang Chủ'),
         BottomNavigationBarItem(icon: Icon(Icons.check_circle_outline), activeIcon: Icon(Icons.check_circle), label: 'Phê duyệt'),
@@ -29,7 +29,7 @@ class AppNavBar extends StatelessWidget {
         BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Hồ Sơ'),
       ];
       selectedColor = const Color(0xFF6366F1);
-    } else if (role == 'club') {
+    } else if (role == 'club_admin') {
       // Club navigation
       items = const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Trang Chủ'),

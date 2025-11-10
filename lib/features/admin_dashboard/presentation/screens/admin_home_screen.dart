@@ -334,7 +334,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       bottomNavigationBar: AppNavBar(
         currentIndex: _selectedIndex,
         onTap: _onNavigationTapped,
-        roleOverride: 'school',
+        roleOverride: 'system_admin',
       ),
     );
   }
