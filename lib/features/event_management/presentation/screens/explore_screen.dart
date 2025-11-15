@@ -14,8 +14,6 @@ class ExploreScreen extends StatefulWidget {
 }
 
 class _ExploreScreenState extends State<ExploreScreen> {
-  final _eventApi = EventApi();
-
   String selectedCategory = 'Tất cả';
   final TextEditingController searchController = TextEditingController();
   bool isGridView = true;
@@ -102,45 +100,36 @@ class _ExploreScreenState extends State<ExploreScreen> {
             _buildFilterBar(),
             const SizedBox(height: 16),
             Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _errorMessage != null
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                              const SizedBox(height: 16),
-                              Text(_errorMessage!),
-                              const SizedBox(height: 16),
-                              ElevatedButton.icon(
-                                onPressed: _loadEvents,
-                                icon: const Icon(Icons.refresh),
-                                label: const Text('Thử lại'),
-                              ),
-                            ],
-                          ),
-                        )
-                      : RefreshIndicator(
-                          onRefresh: _loadEvents,
-                          child: SingleChildScrollView(
-                            child: Column(
-                              children: [
-                                if (isGridView)
-                                  _buildGridView()
-                                else
-                                  _buildListView(),
-                                if (hasMoreEvents) ...[
-                                  Padding(
-                                    padding: const EdgeInsets.all(20),
-                                    child: _buildLoadMoreButton(),
-                                  ),
-                                ],
-                                const SizedBox(height: 80),
-                              ],
+              child: Consumer<EventService>(
+                builder: (context, eventService, _) {
+                  if (eventService.isLoading) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      await eventService.loadAllEvents();
+                    },
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          if (isGridView)
+                            _buildGridView()
+                          else
+                            _buildListView(),
+                          if (hasMoreEvents) ...[
+                            Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: _buildLoadMoreButton(),
                             ),
-                          ),
-                        ),
+                          ],
+                          const SizedBox(height: 80),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -230,8 +219,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   Widget _buildCategorySection() {
-    final categories = ['Tất cả', 'Âm nhạc', 'Công nghệ', 'Nghệ thuật', 'Thể thao'];
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

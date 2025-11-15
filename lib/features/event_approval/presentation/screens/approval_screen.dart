@@ -310,8 +310,10 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
   Widget build(BuildContext context) {
     // Authorization guard: only allow system admins
     final auth = Provider.of<AuthService>(context);
-    final role = auth.user?.role;
-    if (!auth.isAuthenticated || role != 'system_admin') {
+    final user = auth.user;
+    
+    // Use helper method instead of role check
+    if (!auth.isAuthenticated || user == null || !user.canApproveEvents) {
       return Scaffold(
         appBar: AppBar(
           backgroundColor: Colors.white,
@@ -330,9 +332,9 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
                 const SizedBox(height: 12),
                 ElevatedButton(
                   onPressed: () {
-                    if (auth.isAuthenticated) {
-                      // Navigate back based on role
-                      if (role == 'club_admin') {
+                    if (auth.isAuthenticated && user != null) {
+                      // Navigate back based on user permissions
+                      if (user.hasClubAdminPermission) {
                         Navigator.of(context).pushReplacementNamed(AppRoutes.clubHome);
                       } else {
                         Navigator.of(context).pushReplacementNamed(AppRoutes.home);

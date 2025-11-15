@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:event_connect/app_routes.dart';
 import 'package:event_connect/features/event_creation/presentation/screens/club_home_page.dart';
 import 'package:event_connect/features/event_creation/presentation/screens/create_event_screen.dart';
+import 'package:event_connect/features/event_creation/presentation/screens/edit_event_screen.dart';
+import 'package:event_connect/features/event_creation/presentation/screens/event_participants_screen.dart';
 import 'package:event_connect/core/widgets/app_nav_bar.dart';
 import 'package:event_connect/features/event_creation/presentation/widgets/club_event_card.dart';
 import 'package:event_connect/features/event_creation/data/repositories/club_admin_repository.dart';
@@ -211,6 +214,160 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
     if (result == true) {
       _loadEvents();
     }
+  }
+  
+  void _navigateToEditEvent(Event event) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditEventScreen(event: event),
+      ),
+    );
+    
+    // Reload events if event was updated successfully
+    if (result == true) {
+      _loadEvents();
+    }
+  }
+  
+  void _navigateToParticipants(Event event) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EventParticipantsScreen(event: event),
+      ),
+    );
+  }
+  
+  void _navigateToEventDetail(Event event) {
+    // Navigate to event detail screen (can create a dedicated route later)
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          appBar: AppBar(
+            title: const Text('Chi tiết sự kiện'),
+            backgroundColor: Colors.indigo,
+            foregroundColor: Colors.white,
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (event.posterUrl.isNotEmpty)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.asset(
+                      event.posterUrl,
+                      width: double.infinity,
+                      height: 200,
+                      fit: BoxFit.cover,
+                      errorBuilder: (ctx, err, st) => Container(
+                        height: 200,
+                        color: Colors.grey.shade300,
+                        child: const Center(child: Icon(Icons.image, size: 64)),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 16),
+                Text(
+                  event.title,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _buildInfoRow(Icons.calendar_today, 'Thời gian', _formatDate(event.startAt)),
+                _buildInfoRow(Icons.location_on, 'Địa điểm', event.location),
+                _buildInfoRow(Icons.group, 'CLB', event.clubName),
+                
+                // Smart participant display
+                _buildInfoRow(
+                  Icons.people, 
+                  'Người tham gia', 
+                  event.participantDisplayText,
+                ),
+                
+                // Show breakdown if there are multiple statuses
+                if (event.totalParticipants > 0 && 
+                    (event.checkedInCount > 0 || event.attendedCount > 0))
+                  Padding(
+                    padding: const EdgeInsets.only(left: 32, top: 4),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (event.registrationCount > 0)
+                          Text(
+                            '• Đang đăng ký: ${event.registrationCount}',
+                            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                          ),
+                        if (event.checkedInCount > 0)
+                          Text(
+                            '• Đã check-in: ${event.checkedInCount}',
+                            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                          ),
+                        if (event.attendedCount > 0)
+                          Text(
+                            '• Đã tham dự: ${event.attendedCount}',
+                            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                          ),
+                      ],
+                    ),
+                  ),
+                
+                _buildInfoRow(Icons.info, 'Trạng thái', _getStatusText(event)),
+                const SizedBox(height: 16),
+                const Text(
+                  'Mô tả',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(event.description),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: Colors.grey),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 12,
+                  ),
+                ),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // Hiệu ứng trượt ngược (từ trái sang phải khi quay về)
@@ -465,6 +622,9 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
                   location: event.location,
                   organizer: event.clubName,
                   image: event.posterUrl,
+                  onEdit: () => _navigateToEditEvent(event),
+                  onViewParticipants: () => _navigateToParticipants(event),
+                  onTap: () => _navigateToEventDetail(event),
                 ),
               )).toList(),
             const SizedBox(height: 28),

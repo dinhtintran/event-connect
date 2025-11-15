@@ -1,12 +1,12 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
-import 'package:event_connect/core/config/app_config.dart';
+import 'package:event_connect/core/api/dio_provider.dart';
 
 /// ClubApi để quản lý CLB
 class ClubApi {
   final Dio dio;
 
-  ClubApi({Dio? dio}) : dio = dio ?? Dio(BaseOptions(baseUrl: AppConfig.apiBaseUrl));
+  ClubApi({Dio? dio}) : dio = dio ?? DioProvider.instance;
 
   void _dbg(String s) {
     // ignore: avoid_print

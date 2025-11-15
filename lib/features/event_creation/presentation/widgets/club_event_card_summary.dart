@@ -6,9 +6,8 @@ class ClubEventCardSummary extends StatelessWidget {
   final int registered;
   final int capacity;
   final bool isLive;
-  final VoidCallback onManage;
-  final VoidCallback onRegister;
-  final VoidCallback onEdit;
+  final VoidCallback onManage; // View participants
+  final VoidCallback onEdit;   // Edit event
 
   const ClubEventCardSummary({
     super.key,
@@ -18,7 +17,6 @@ class ClubEventCardSummary extends StatelessWidget {
     required this.capacity,
     required this.isLive,
     required this.onManage,
-    required this.onRegister,
     required this.onEdit,
   });
 
@@ -82,28 +80,33 @@ class ClubEventCardSummary extends StatelessWidget {
 
           Row(
             children: [
-              OutlinedButton(
-                onPressed: onManage,
-                style: OutlinedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onManage,
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  ),
+                  icon: const Icon(Icons.people, size: 16),
+                  label: const Text('Người ĐK', style: TextStyle(fontSize: 13)),
                 ),
-                child: const Text('Quản lý'),
               ),
-              const SizedBox(width: 8),
-              OutlinedButton(
-                onPressed: onRegister,
-                style: OutlinedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
+              const SizedBox(width: 6),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: onEdit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.indigo,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    elevation: 0,
+                  ),
+                  icon: const Icon(Icons.edit, size: 16),
+                  label: const Text('Sửa', style: TextStyle(fontSize: 13)),
                 ),
-                child: const Text('Đăng ký'),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                onPressed: onEdit,
-                icon: const Icon(Icons.edit, size: 20),
-                color: Colors.black54,
               ),
             ],
           ),

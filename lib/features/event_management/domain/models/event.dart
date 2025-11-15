@@ -19,7 +19,14 @@ class Event {
   final DateTime? endAt;
   final String posterUrl;
   final int capacity;
-  final int participantCount;
+  final int participantCount; // Legacy: maps to registration_count
+  
+  // NEW: Multiple participant counts for better tracking
+  final int registrationCount;  // Đang đăng ký (chưa check-in)
+  final int checkedInCount;     // Đã check-in (đang trong event)
+  final int attendedCount;      // Đã hoàn thành tham dự
+  final int totalParticipants;  // Tổng số người (trừ cancelled)
+  
   final String? status;
   final String riskLevel;
   final DateTime? createdAt;
@@ -43,6 +50,13 @@ class Event {
     this.posterUrl = '',
     this.capacity = 0,
     this.participantCount = 0,
+    
+    // NEW: Multiple counts (with defaults for backward compatibility)
+    this.registrationCount = 0,
+    this.checkedInCount = 0,
+    this.attendedCount = 0,
+    this.totalParticipants = 0,
+    
   this.status,
   this.riskLevel = '',
     this.createdAt,
@@ -50,6 +64,81 @@ class Event {
     this.createdBy,
   })  : date = date ?? DateTime.now(),
         startAt = startAt ?? date ?? DateTime.now();
+
+  // ========== Helper Methods for Smart Display ==========
+  
+  /// Get active participants (registered + checked-in)
+  int get activeParticipants => registrationCount + checkedInCount;
+  
+  /// Check if event is currently happening
+  bool get isLive {
+    final now = DateTime.now();
+    final end = endAt;
+    return now.isAfter(startAt) && (end == null || now.isBefore(end));
+  }
+  
+  /// Check if event has ended
+  bool get hasEnded {
+    final end = endAt;
+    if (end == null) return false;
+    return DateTime.now().isAfter(end);
+  }
+  
+  /// Get smart participant display text based on event status
+  String get participantDisplayText {
+    // No participants at all
+    if (totalParticipants == 0) {
+      return '0/$capacity';
+    }
+    
+    // Event has ended - show attended count
+    if (hasEnded && attendedCount > 0) {
+      return '$attendedCount đã tham dự';
+    }
+    
+    // Event is live and has checked-in people
+    if (isLive && checkedInCount > 0) {
+      if (registrationCount > 0) {
+        return '$checkedInCount đã đến / ${activeParticipants} đã đăng ký';
+      }
+      return '$checkedInCount đã đến';
+    }
+    
+    // Event hasn't started - show registrations
+    if (registrationCount > 0) {
+      return '$registrationCount/$capacity';
+    }
+    
+    // Fallback to total participants
+    return '$totalParticipants/$capacity';
+  }
+  
+  /// Get short display (for cards)
+  String get participantCountShort {
+    if (totalParticipants == 0) return '0/$capacity';
+    
+    // Show most relevant count based on status
+    if (hasEnded) {
+      return '$attendedCount đã tham dự';
+    } else if (isLive) {
+      return '$checkedInCount/$totalParticipants';
+    } else {
+      return '$registrationCount/$capacity';
+    }
+  }
+  
+  /// Check if event is full (based on active participants)
+  bool get isFull => activeParticipants >= capacity;
+  
+  /// Get availability text
+  String get availabilityText {
+    if (isFull) return 'Đã đầy';
+    if (hasEnded) return 'Đã kết thúc';
+    if (isLive) return 'Đang diễn ra';
+    
+    final remaining = capacity - activeParticipants;
+    return 'Còn $remaining chỗ';
+  }
 
   factory Event.fromJson(Map<String, dynamic> json) {
     String parseId(dynamic raw) {
@@ -95,7 +184,16 @@ class Event {
       endAt: parseDate(json['end_at']),
       posterUrl: (json['poster'] ?? json['poster_url'] ?? '') as String,
       capacity: parseInt(json['capacity']),
+      
+      // Legacy field for backward compatibility
       participantCount: parseInt(json['registration_count']),
+      
+      // NEW: Multiple count fields (with fallbacks for old API)
+      registrationCount: parseInt(json['registration_count']),
+      checkedInCount: parseInt(json['checked_in_count']),
+      attendedCount: parseInt(json['attended_count']),
+      totalParticipants: parseInt(json['total_participants']),
+      
       status: json['status'] as String?,
       riskLevel: '', // Not in API response
       createdAt: parseDate(json['created_at']),

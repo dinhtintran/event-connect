@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:event_connect/features/event_management/domain/models/event.dart';
-import 'package:event_connect/features/event_management/data/api/event_api.dart';
 import 'package:event_connect/features/event_management/domain/services/event_service.dart';
 import 'package:event_connect/features/event_management/presentation/screens/event_detail_screen.dart';
 import 'package:event_connect/app_routes.dart';
@@ -17,15 +15,8 @@ class MyEventsScreen extends StatefulWidget {
 
 class _MyEventsScreenState extends State<MyEventsScreen>
     with SingleTickerProviderStateMixin {
-  final _eventApi = EventApi();
-  final _storage = const FlutterSecureStorage();
   late TabController _tabController;
   final TextEditingController searchController = TextEditingController();
-
-  // API data
-  List<Event> _allRegisteredEvents = [];
-  bool _isLoading = true;
-  String? _errorMessage;
 
   @override
   void initState() {
@@ -239,7 +230,9 @@ class _MyEventsScreenState extends State<MyEventsScreen>
       {required bool isUpcoming, bool isSaved = false}) {
     if (events.isEmpty) {
       return RefreshIndicator(
-        onRefresh: _loadEvents,
+        onRefresh: () async {
+          await context.read<EventService>().loadMyRegisteredEvents();
+        },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: SizedBox(
@@ -270,7 +263,9 @@ class _MyEventsScreenState extends State<MyEventsScreen>
     }
 
     return RefreshIndicator(
-      onRefresh: _loadEvents,
+      onRefresh: () async {
+        await context.read<EventService>().loadMyRegisteredEvents();
+      },
       child: ListView.builder(
         padding: const EdgeInsets.all(20),
         itemCount: events.length,

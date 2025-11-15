@@ -118,18 +118,33 @@ class ClubAdminRepository {
   /// Lấy danh sách người tham gia sự kiện
   Future<List<Map<String, dynamic>>> getEventParticipants(String eventId, {String? status}) async {
     final result = await api.getEventParticipants(eventId, status: status);
+    
+    // Debug logging
+    print('📡 getEventParticipants result: status=${result['status']}');
+    print('📡 Response body type: ${result['body'].runtimeType}');
+    if (result['status'] != 200) {
+      print('❌ Error response: ${result['body']}');
+    }
+    
     if (result['status'] == 200) {
       final body = result['body'];
       if (body is Map && body.containsKey('results')) {
-        return (body['results'] as List<dynamic>)
+        final participants = (body['results'] as List<dynamic>)
             .map((json) => json as Map<String, dynamic>)
             .toList();
+        print('✅ Parsed ${participants.length} participants from results');
+        return participants;
       } else if (body is List) {
-        return body.map((json) => json as Map<String, dynamic>).toList();
+        final participants = body.map((json) => json as Map<String, dynamic>).toList();
+        print('✅ Parsed ${participants.length} participants from list');
+        return participants;
       }
+      print('⚠️ No participants found, returning empty list');
       return [];
     } else {
-      throw Exception(result['body']['detail'] ?? 'Failed to fetch participants');
+      final errorDetail = result['body']['detail'] ?? 'Failed to fetch participants';
+      print('❌ Throwing exception: $errorDetail');
+      throw Exception(errorDetail);
     }
   }
 

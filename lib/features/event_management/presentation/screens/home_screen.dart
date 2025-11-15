@@ -15,8 +15,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final _eventApi = EventApi();
-
   String selectedCategory = 'Tất cả';
   final TextEditingController searchController = TextEditingController();
   int displayedUpcomingEventsCount = 3;

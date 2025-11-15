@@ -1,11 +1,11 @@
 import 'package:dio/dio.dart';
-import 'package:event_connect/core/config/app_config.dart';
+import 'package:event_connect/core/api/dio_provider.dart';
 
 /// NotificationApi để quản lý thông báo
 class NotificationApi {
   final Dio dio;
 
-  NotificationApi({Dio? dio}) : dio = dio ?? Dio(BaseOptions(baseUrl: AppConfig.apiBaseUrl));
+  NotificationApi({Dio? dio}) : dio = dio ?? DioProvider.instance;
 
   void _dbg(String s) {
     // ignore: avoid_print

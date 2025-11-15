@@ -10,6 +10,9 @@ class ClubEventCard extends StatelessWidget {
   final String location;
   final String organizer;
   final String image;
+  final VoidCallback? onEdit;
+  final VoidCallback? onViewParticipants;
+  final VoidCallback? onTap;
 
   const ClubEventCard({
     super.key,
@@ -20,6 +23,9 @@ class ClubEventCard extends StatelessWidget {
     required this.location,
     required this.organizer,
     required this.image,
+    this.onEdit,
+    this.onViewParticipants,
+    this.onTap,
   });
 
   @override
@@ -127,8 +133,7 @@ class ClubEventCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 12),
-                // Use Wrap so action buttons can wrap to the next line on
-                // narrow screens instead of causing an overflow.
+                // Action buttons
                 Align(
                   alignment: Alignment.centerRight,
                   child: Wrap(
@@ -136,27 +141,46 @@ class ClubEventCard extends StatelessWidget {
                     runSpacing: 6,
                     alignment: WrapAlignment.end,
                     children: [
-                      OutlinedButton(
-                        onPressed: () {},
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.black,
-                          side: const BorderSide(color: Colors.grey),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8)),
+                      if (onViewParticipants != null)
+                        OutlinedButton.icon(
+                          onPressed: onViewParticipants,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.indigo,
+                            side: const BorderSide(color: Colors.indigo),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                          icon: const Icon(Icons.people, size: 18),
+                          label: const Text('Người đăng ký'),
                         ),
-                        child: const Text('Chi tiết'),
-                      ),
+                      if (onEdit != null)
+                        OutlinedButton.icon(
+                          onPressed: onEdit,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.black,
+                            side: const BorderSide(color: Colors.grey),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                          icon: const Icon(Icons.edit, size: 18),
+                          label: const Text('Chỉnh sửa'),
+                        ),
                       ElevatedButton(
-                        onPressed: () {},
+                        onPressed: onTap,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.indigo,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
                           elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                         ),
                         child: const Text(
-                          'Quản lý',
+                          'Chi tiết',
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w600,

@@ -48,7 +48,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       }
 
       // Get user's registered events and check if this event is in the list
-      final result = await _eventApi.getMyEvents(accessToken: accessToken);
+      final result = await _eventApi.getMyRegisteredEvents();
 
       if (result['status'] == 200) {
         final data = result['body'];
@@ -100,10 +100,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       }
 
       // Call register API
-      final result = await _eventApi.registerForEvent(
-        accessToken: accessToken,
-        eventId: widget.event.id,
-      );
+      final result = await _eventApi.registerForEvent(widget.event.id);
 
       if (result['status'] == 200 || result['status'] == 201) {
         setState(() {

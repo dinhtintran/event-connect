@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:event_connect/app_routes.dart';
 import 'package:event_connect/features/event_creation/presentation/widgets/club_event_card_summary.dart';
 import 'package:event_connect/features/event_creation/presentation/widgets/club_notification_tile.dart';
+import 'package:event_connect/features/event_creation/presentation/screens/edit_event_screen.dart';
+import 'package:event_connect/features/event_creation/presentation/screens/event_participants_screen.dart';
 import 'package:event_connect/features/event_creation/data/repositories/club_admin_repository.dart';
 import 'package:event_connect/features/event_creation/data/api/club_admin_api.dart';
 import 'package:event_connect/features/event_management/domain/models/event.dart';
@@ -500,18 +502,14 @@ class _ClubHomePageState extends State<ClubHomePage> {
                               child: ClubEventCardSummary(
                                 title: event.title,
                                 status: _getStatusText(event),
-                                registered: event.participantCount,
+                                // Use smart count based on new fields
+                                registered: event.totalParticipants > 0 
+                                    ? event.totalParticipants 
+                                    : event.registrationCount,
                                 capacity: event.capacity,
                                 isLive: _isEventLive(event),
-                                onManage: () {
-                                  // TODO: Navigate to event management page
-                                },
-                                onRegister: () {
-                                  // TODO: Handle registration
-                                },
-                                onEdit: () {
-                                  // TODO: Navigate to edit event page
-                                },
+                                onManage: () => _navigateToParticipants(event),
+                                onEdit: () => _navigateToEditEvent(event),
                               ),
                             )),
 
@@ -583,6 +581,36 @@ class _ClubHomePageState extends State<ClubHomePage> {
           BottomNavigationBarItem(
               icon: Icon(Icons.person_outline), label: 'Hồ Sơ'),
         ],
+      ),
+    );
+  }
+  
+  // Navigation methods for event actions
+  void _navigateToEditEvent(Event event) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditEventScreen(event: event),
+      ),
+    );
+    
+    // Reload data if event was updated successfully
+    if (result == true) {
+      _loadData();
+    }
+  }
+  
+  void _navigateToParticipants(Event event) {
+    debugPrint('🔵 ClubHomePage: Navigating to participants for event:');
+    debugPrint('   - Event ID: ${event.id}');
+    debugPrint('   - Event Title: ${event.title}');
+    debugPrint('   - Event Club: ${event.clubName}');
+    debugPrint('   - Participants: ${event.participantCount}/${event.capacity}');
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EventParticipantsScreen(event: event),
       ),
     );
   }

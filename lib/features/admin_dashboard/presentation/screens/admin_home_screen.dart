@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:event_connect/features/event_management/domain/models/event.dart';
 import 'package:event_connect/features/admin_dashboard/domain/models/activity.dart';
-import 'package:event_connect/features/admin_dashboard/domain/models/admin_stats.dart';
 import 'package:event_connect/features/admin_dashboard/domain/services/admin_service.dart';
 import 'package:event_connect/features/admin_dashboard/presentation/widgets/stat_card.dart';
 import 'package:event_connect/features/admin_dashboard/presentation/widgets/pending_event_card.dart';
@@ -170,8 +169,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               children: [
                 Text('Bạn có chắc chắn muốn từ chối sự kiện "${event.title}"?'),
                 const SizedBox(height: 16),
-                const TextField(
-                  decoration: InputDecoration(
+                TextField(
+                  controller: reasonController,
+                  decoration: const InputDecoration(
                     labelText: 'Lý do từ chối',
                     border: OutlineInputBorder(),
                     hintText: 'Nhập lý do từ chối...',
@@ -414,17 +414,13 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                     ],
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 80), // Space for bottom navigation
-          ],
-        ),
-      ),
       bottomNavigationBar: AppNavBar(
         currentIndex: _selectedIndex,
         onTap: _onNavigationTapped,
         roleOverride: 'system_admin',
       ),
+    );
+      },
     );
   }
 }
