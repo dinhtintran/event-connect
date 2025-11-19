@@ -2,18 +2,22 @@ from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.exceptions import NotFound
 from django.utils import timezone
 from django.db.models import Q, Count, Avg
 from django.shortcuts import get_object_or_404
 from django.utils.text import slugify
 import uuid
 
-from .models import Event, EventRegistration, Feedback, EventApproval, EventImage
+from .models import Event, EventRegistration, Feedback, EventApproval, EventImage, EventCancellationRequest, SavedEvent
 from .serializers import (
     EventListSerializer, EventDetailSerializer, EventCreateUpdateSerializer,
     EventFeaturedSerializer, EventRegistrationSerializer, EventRegistrationCreateSerializer,
     ParticipantSerializer, FeedbackSerializer, FeedbackCreateSerializer,
-    EventApprovalSerializer, EventApprovalActionSerializer
+    EventApprovalSerializer, EventApprovalActionSerializer,
+    EventCancellationRequestSerializer, EventCancellationRequestCreateSerializer,
+    EventCancellationRequestReviewSerializer,
+    SavedEventSerializer, SavedEventActionSerializer
 )
 from .permissions import IsClubAdminOrReadOnly, IsEventCreatorOrClubAdmin, IsSystemAdmin
 from clubs.models import Club
@@ -37,6 +41,13 @@ class EventViewSet(viewsets.ModelViewSet):
         elif self.action in ['create', 'update', 'partial_update']:
             return EventCreateUpdateSerializer
         return EventDetailSerializer
+    
+    def get_object(self):
+        """Override to provide better error message for non-existent events"""
+        try:
+            return super().get_object()
+        except Event.DoesNotExist:
+            raise NotFound(f"Event with ID {self.kwargs.get('id')} does not exist")
     
     def get_queryset(self):
         queryset = Event.objects.select_related('club', 'created_by').prefetch_related('images')
@@ -160,9 +171,7 @@ class EventViewSet(viewsets.ModelViewSet):
             **serializer.validated_data
         )
         
-        # Increment registration count
-        event.registration_count += 1
-        event.save(update_fields=['registration_count'])
+        # Note: registration_count is auto-calculated via @property, no need to update manually
         
         # Create notification
         from notifications.models import Notification
@@ -199,10 +208,7 @@ class EventViewSet(viewsets.ModelViewSet):
         try:
             registration = EventRegistration.objects.get(event=event, user=user)
             
-            # Update event registration count
-            event.registration_count = max(0, event.registration_count - 1)
-            event.save(update_fields=['registration_count'])
-            
+            # Delete registration (registration_count will auto-update via @property)
             registration.delete()
             
             return Response({
@@ -300,11 +306,79 @@ class EventViewSet(viewsets.ModelViewSet):
             'results': serializer.data
         })
     
-    @action(detail=True, methods=['get'], permission_classes=[IsEventCreatorOrClubAdmin])
+    @action(detail=True, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def participants(self, request, id=None):
-        """Get list of participants (Club admin only)"""
-        event = self.get_object()
+        """
+        Get list of participants (Club admin/president only)
+        Uses CanViewParticipants permission with 4-tier hierarchy
         
+        Query params:
+        - status: Filter participants by registration status (registered, attended, cancelled)
+        """
+        from .permissions import CanViewParticipants
+        
+        # 🔍 DEBUG: Log request details
+        print(f"\n{'='*60}")
+        print(f"🔍 DEBUG participants() called")
+        print(f"  Request path: {request.path}")
+        print(f"  Query params: {dict(request.query_params)}")
+        print(f"  id parameter: {id}")
+        print(f"{'='*60}\n")
+        
+        # ⚠️ IMPORTANT: Get event WITHOUT applying queryset filters
+        # The 'status' param is for EventRegistration, NOT for Event!
+        event = Event.objects.get(id=id)
+        user = request.user
+        club = event.club
+        
+        # 🔍 DEBUG: Log who is trying to access
+        print(f"\n{'='*60}")
+        print(f"🔍 DEBUG /api/events/{event.id}/participants/")
+        print(f"  User: {user.username} (email: {user.email})")
+        print(f"  User.role: {user.role}")
+        print(f"  Event: {event.title}")
+        print(f"  Club: {club.name}")
+        print(f"{'='*60}\n")
+        
+        # Check permission using 4-tier hierarchy
+        # 🔥 Priority 0: System admin
+        if user.role == 'system_admin' or user.is_superuser:
+            pass  # Has permission
+        else:
+            # ⭐️⭐️⭐️ Priority 1: ClubMembership
+            from clubs.models import ClubMembership
+            has_permission = False
+            
+            try:
+                membership = ClubMembership.objects.get(user=user, club=club)
+                if membership.role in ['president', 'admin']:
+                    has_permission = True
+            except ClubMembership.DoesNotExist:
+                pass
+            
+            # Check event creator
+            if not has_permission and hasattr(event, 'created_by') and event.created_by == user:
+                has_permission = True
+            
+            # ⭐️⭐️ Priority 2: User.role fallback
+            if not has_permission and user.role == 'club_admin':
+                if ClubMembership.objects.filter(user=user, club=club).exists():
+                    has_permission = True
+            
+            # ⭐️ Priority 3: Legacy checks
+            if not has_permission:
+                if club.president == user or club.admins.filter(id=user.id).exists():
+                    has_permission = True
+            
+            if not has_permission:
+                return Response({
+                    'detail': 'You do not have permission to view participants.',
+                    'code': 'club_permission_denied',
+                    'required_role': 'president or admin',
+                    'club_name': club.name
+                }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Get participants
         status_filter = request.query_params.get('status')
         queryset = EventRegistration.objects.filter(event=event).select_related('user')
         
@@ -314,6 +388,9 @@ class EventViewSet(viewsets.ModelViewSet):
         serializer = ParticipantSerializer(queryset, many=True)
         
         return Response({
+            'event_id': event.id,
+            'event_title': event.title,
+            'club_name': club.name,
             'count': queryset.count(),
             'results': serializer.data
         })
@@ -336,6 +413,332 @@ class EventViewSet(viewsets.ModelViewSet):
             'poster': request.build_absolute_uri(event.poster.url),
             'message': 'Poster uploaded successfully'
         })
+    
+    def destroy(self, request, *args, **kwargs):
+        """Delete an event - only allowed for non-approved events"""
+        instance = self.get_object()
+        user = request.user
+        club = instance.club
+        
+        # Check permission using 4-tier hierarchy (same as participants method)
+        has_permission = False
+        
+        # Priority 0: System admin
+        if user.role == 'system_admin' or user.is_superuser:
+            has_permission = True
+        # Priority 1: Event creator
+        elif instance.created_by == user:
+            has_permission = True
+        # Priority 2: Club admin via ClubMembership
+        else:
+            from clubs.models import ClubMembership
+            try:
+                membership = ClubMembership.objects.get(user=user, club=club)
+                if membership.role in ['president', 'admin']:
+                    has_permission = True
+            except ClubMembership.DoesNotExist:
+                pass
+            
+            # Priority 3: User.role fallback
+            if not has_permission and user.role == 'club_admin':
+                if ClubMembership.objects.filter(user=user, club=club).exists():
+                    has_permission = True
+            
+            # Priority 4: Legacy checks
+            if not has_permission:
+                if club.president == user or club.admins.filter(id=user.id).exists():
+                    has_permission = True
+        
+        # If no permission, return 403
+        if not has_permission:
+            return Response(
+                {'error': 'You do not have permission to delete this event'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Check if event is approved - cannot delete approved events
+        if instance.status == 'approved':
+            return Response(
+                {'error': 'Cannot delete approved events'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Delete the event
+        instance.delete()
+        
+        return Response(
+            {'message': 'Event deleted successfully'},
+            status=status.HTTP_204_NO_CONTENT
+        )
+    
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def request_cancellation(self, request, id=None):
+        """
+        Tạo yêu cầu hủy sự kiện đã được phê duyệt (Club Admin only)
+        
+        POST /api/events/{id}/request_cancellation/
+        Body: {
+            "reason": "Lý do hủy sự kiện",
+            "refund_policy": "Chính sách hoàn tiền",
+            "alternative_action": "Hành động thay thế"
+        }
+        """
+        event = self.get_object()
+        user = request.user
+        club = event.club
+        
+        # Check permission - must be club admin
+        has_permission = False
+        
+        if user.role == 'system_admin' or user.is_superuser:
+            has_permission = True
+        elif event.created_by == user:
+            has_permission = True
+        else:
+            from clubs.models import ClubMembership
+            try:
+                membership = ClubMembership.objects.get(user=user, club=club)
+                if membership.role in ['president', 'admin']:
+                    has_permission = True
+            except ClubMembership.DoesNotExist:
+                pass
+        
+        if not has_permission:
+            return Response({
+                'error': 'Only club admin can request event cancellation'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Validate event status
+        if event.status != 'approved':
+            return Response({
+                'error': 'Can only request cancellation for approved events',
+                'current_status': event.status
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check if event has ended
+        if event.end_at < timezone.now():
+            return Response({
+                'error': 'Cannot cancel past events'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check if already has pending request
+        existing_request = EventCancellationRequest.objects.filter(
+            event=event,
+            status='pending'
+        ).first()
+        
+        if existing_request:
+            return Response({
+                'error': 'Already has pending cancellation request',
+                'request_id': existing_request.id,
+                'created_at': existing_request.created_at
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Create cancellation request
+        serializer = EventCancellationRequestCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        cancellation_request = EventCancellationRequest.objects.create(
+            event=event,
+            requested_by=user,
+            **serializer.validated_data
+        )
+        
+        # Create notification for system admins
+        from notifications.models import Notification
+        from accounts.models import User
+        
+        system_admins = User.objects.filter(
+            Q(role='system_admin') | Q(is_superuser=True)
+        )
+        
+        for admin in system_admins:
+            Notification.objects.create(
+                user=admin,
+                type='cancellation_request',
+                title='Yêu cầu hủy sự kiện',
+                message=f'CLB "{club.name}" yêu cầu hủy sự kiện "{event.title}"',
+                event=event
+            )
+        
+        return Response({
+            'id': cancellation_request.id,
+            'event': {
+                'id': event.id,
+                'title': event.title
+            },
+            'status': cancellation_request.status,
+            'reason': cancellation_request.reason,
+            'created_at': cancellation_request.created_at,
+            'message': 'Cancellation request submitted successfully'
+        }, status=status.HTTP_201_CREATED)
+    
+    @action(detail=True, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def cancellation_requests(self, request, id=None):
+        """
+        Lấy danh sách yêu cầu hủy của sự kiện (Club Admin & System Admin)
+        
+        GET /api/events/{id}/cancellation_requests/
+        """
+        event = self.get_object()
+        user = request.user
+        
+        # Check permission
+        has_permission = False
+        
+        if user.role == 'system_admin' or user.is_superuser:
+            has_permission = True
+        else:
+            club = event.club
+            if event.created_by == user:
+                has_permission = True
+            else:
+                from clubs.models import ClubMembership
+                try:
+                    membership = ClubMembership.objects.get(user=user, club=club)
+                    if membership.role in ['president', 'admin']:
+                        has_permission = True
+                except ClubMembership.DoesNotExist:
+                    pass
+        
+        if not has_permission:
+            return Response({
+                'error': 'Permission denied'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        requests_qs = EventCancellationRequest.objects.filter(
+            event=event
+        ).select_related('requested_by', 'reviewed_by').order_by('-created_at')
+        
+        serializer = EventCancellationRequestSerializer(requests_qs, many=True)
+        
+        return Response({
+            'event_id': event.id,
+            'event_title': event.title,
+            'count': requests_qs.count(),
+            'results': serializer.data
+        })
+    
+    # ============= SAVED EVENTS ACTIONS =============
+    
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def saved(self, request):
+        """
+        Lấy danh sách sự kiện đã lưu của user hiện tại
+        
+        GET /api/events/saved/
+        Query params:
+        - page: Số trang
+        - page_size: Số items per page
+        """
+        saved_events = SavedEvent.objects.filter(
+            user=request.user
+        ).select_related('event', 'event__club').order_by('-saved_at')
+        
+        # Pagination
+        page = self.paginate_queryset(saved_events)
+        if page is not None:
+            # Extract events from SavedEvent và thêm saved_at
+            results = []
+            for saved_event in page:
+                event_data = EventListSerializer(
+                    saved_event.event, 
+                    context={'request': request}
+                ).data
+                event_data['saved_at'] = saved_event.saved_at
+                results.append(event_data)
+            return self.get_paginated_response(results)
+        
+        # No pagination
+        results = []
+        for saved_event in saved_events:
+            event_data = EventListSerializer(
+                saved_event.event, 
+                context={'request': request}
+            ).data
+            event_data['saved_at'] = saved_event.saved_at
+            results.append(event_data)
+        
+        return Response({
+            'count': saved_events.count(),
+            'results': results
+        })
+    
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def save(self, request, id=None):
+        """
+        Lưu một sự kiện vào danh sách yêu thích
+        
+        POST /api/events/{id}/save/
+        """
+        event = self.get_object()
+        
+        # Check if already saved
+        if SavedEvent.objects.filter(user=request.user, event=event).exists():
+            return Response(
+                {'error': 'Event already saved'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Create saved event
+        saved_event = SavedEvent.objects.create(
+            user=request.user,
+            event=event
+        )
+        
+        return Response({
+            'message': 'Event saved successfully',
+            'event_id': event.id,
+            'saved_at': saved_event.saved_at
+        }, status=status.HTTP_201_CREATED)
+    
+    @action(detail=True, methods=['post', 'delete'], permission_classes=[permissions.IsAuthenticated])
+    def unsave(self, request, id=None):
+        """
+        Bỏ lưu một sự kiện khỏi danh sách yêu thích
+        
+        POST /api/events/{id}/unsave/
+        hoặc
+        DELETE /api/events/{id}/unsave/
+        """
+        event = self.get_object()
+        
+        try:
+            saved_event = SavedEvent.objects.get(user=request.user, event=event)
+            saved_event.delete()
+            
+            return Response({
+                'message': 'Event unsaved successfully',
+                'event_id': event.id
+            })
+        except SavedEvent.DoesNotExist:
+            return Response(
+                {'error': 'Event not saved'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+    
+    @action(detail=True, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def is_saved(self, request, id=None):
+        """
+        Kiểm tra xem sự kiện đã được lưu chưa
+        
+        GET /api/events/{id}/is-saved/
+        """
+        event = self.get_object()
+        
+        try:
+            saved_event = SavedEvent.objects.get(user=request.user, event=event)
+            return Response({
+                'event_id': event.id,
+                'is_saved': True,
+                'saved_at': saved_event.saved_at
+            })
+        except SavedEvent.DoesNotExist:
+            return Response({
+                'event_id': event.id,
+                'is_saved': False,
+                'saved_at': None
+            })
 
 
 class EventRegistrationViewSet(viewsets.ReadOnlyModelViewSet):
@@ -480,3 +883,147 @@ class EventApprovalViewSet(viewsets.ReadOnlyModelViewSet):
             'event_id': event.id,
             'rejected_at': approval.reviewed_at
         })
+
+
+class EventCancellationRequestViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for System Admin to manage cancellation requests
+    """
+    serializer_class = EventCancellationRequestSerializer
+    permission_classes = [IsSystemAdmin]
+    pagination_class = StandardResultsSetPagination
+    
+    def get_queryset(self):
+        return EventCancellationRequest.objects.select_related(
+            'event', 'event__club', 'requested_by', 'reviewed_by'
+        ).order_by('-created_at')
+    
+    @action(detail=False, methods=['get'])
+    def pending(self, request):
+        """Get pending cancellation requests"""
+        requests_qs = self.get_queryset().filter(status='pending')
+        
+        page = self.paginate_queryset(requests_qs)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = self.get_serializer(requests_qs, many=True)
+        return Response({
+            'count': requests_qs.count(),
+            'results': serializer.data
+        })
+    
+    @action(detail=True, methods=['post'])
+    def review(self, request, pk=None):
+        """
+        Xét duyệt yêu cầu hủy sự kiện (System Admin only)
+        
+        POST /api/event-cancellation-requests/{id}/review/
+        Body: {
+            "action": "approve" | "reject",
+            "admin_comment": "Nhận xét của admin"
+        }
+        """
+        cancellation_request = self.get_object()
+        
+        # 🔍 DEBUG: Log request details
+        print(f"\n{'='*60}")
+        print(f"🔍 DEBUG review() called")
+        print(f"  Request data: {request.data}")
+        print(f"  Cancellation request ID: {cancellation_request.id}")
+        print(f"  Current status: {cancellation_request.status}")
+        print(f"  Event: {cancellation_request.event.title}")
+        print(f"{'='*60}\n")
+        
+        # Check if already reviewed
+        if cancellation_request.status != 'pending':
+            return Response({
+                'error': 'This cancellation request has already been reviewed',
+                'detail': f'Current status is "{cancellation_request.status}". Only pending requests can be reviewed.',
+                'current_status': cancellation_request.status,
+                'reviewed_at': cancellation_request.reviewed_at,
+                'reviewed_by': cancellation_request.reviewed_by.email if cancellation_request.reviewed_by else None,
+                'admin_comment': cancellation_request.admin_comment
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer = EventCancellationRequestReviewSerializer(data=request.data)
+        if not serializer.is_valid():
+            print(f"❌ Serializer validation errors: {serializer.errors}")
+        serializer.is_valid(raise_exception=True)
+        
+        action = serializer.validated_data['action']
+        admin_comment = serializer.validated_data.get('admin_comment', '')
+        
+        event = cancellation_request.event
+        
+        if action == 'approve':
+            # Approve cancellation - cancel the event
+            cancellation_request.status = 'approved'
+            cancellation_request.reviewed_by = request.user
+            cancellation_request.reviewed_at = timezone.now()
+            cancellation_request.admin_comment = admin_comment
+            cancellation_request.save()
+            
+            # Update event status to cancelled
+            event.status = 'cancelled'
+            event.save(update_fields=['status'])
+            
+            # Notify all participants
+            registrations = EventRegistration.objects.filter(
+                event=event,
+                status__in=['registered', 'attended']
+            ).select_related('user')
+            
+            from notifications.models import Notification
+            
+            for reg in registrations:
+                Notification.objects.create(
+                    user=reg.user,
+                    type='event_cancelled',
+                    title='Sự kiện bị hủy',
+                    message=f'Sự kiện "{event.title}" đã bị hủy. Lý do: {cancellation_request.reason}',
+                    event=event
+                )
+            
+            # Notify club admin
+            Notification.objects.create(
+                user=cancellation_request.requested_by,
+                type='cancellation_approved',
+                title='Yêu cầu hủy được chấp nhận',
+                message=f'Yêu cầu hủy sự kiện "{event.title}" đã được phê duyệt',
+                event=event
+            )
+            
+            return Response({
+                'message': 'Cancellation request approved - Event has been cancelled',
+                'event_id': event.id,
+                'status': 'cancelled',
+                'notified_participants': registrations.count()
+            })
+        
+        else:  # reject
+            # Reject cancellation - event continues
+            cancellation_request.status = 'rejected'
+            cancellation_request.reviewed_by = request.user
+            cancellation_request.reviewed_at = timezone.now()
+            cancellation_request.admin_comment = admin_comment
+            cancellation_request.save()
+            
+            # Notify club admin
+            from notifications.models import Notification
+            
+            Notification.objects.create(
+                user=cancellation_request.requested_by,
+                type='cancellation_rejected',
+                title='Yêu cầu hủy bị từ chối',
+                message=f'Yêu cầu hủy sự kiện "{event.title}" bị từ chối. Lý do: {admin_comment}',
+                event=event
+            )
+            
+            return Response({
+                'message': 'Cancellation request rejected - Event will continue',
+                'event_id': event.id,
+                'status': event.status,
+                'admin_comment': admin_comment
+            })

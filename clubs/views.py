@@ -62,11 +62,18 @@ class ClubViewSet(viewsets.ModelViewSet):
         
         return Response(data)
     
-    @action(detail=True, methods=['post'], permission_classes=[IsClubAdmin])
+    @action(detail=True, methods=['get', 'post'], permission_classes=[permissions.IsAuthenticatedOrReadOnly])
     def events(self, request, id=None):
-        """Create a new event for this club"""
+        """Get events or create a new event for this club"""
         club = self.get_object()
         
+        # GET: List events for this club
+        if request.method == 'GET':
+            events = Event.objects.filter(club=club).select_related('club', 'created_by').order_by('-created_at')
+            serializer = EventListSerializer(events, many=True)
+            return Response(serializer.data)
+        
+        # POST: Create new event
         # Check if user is club admin
         if request.user != club.president and request.user not in club.admins.all():
             return Response(
@@ -119,3 +126,100 @@ class ClubViewSet(viewsets.ModelViewSet):
             'message': 'Event created and submitted for approval' if requires_approval else 'Event created successfully',
             'created_at': event.created_at
         }, status=status.HTTP_201_CREATED)
+    
+    @action(detail=True, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def check_permission(self, request, id=None):
+        """
+        Check if user has admin permission in this club
+        GET /api/clubs/{id}/check-permission/
+        
+        Returns permission info with reason (4-tier hierarchy)
+        """
+        club = self.get_object()
+        user = request.user
+        
+        # 🔥 Priority 0: System admin
+        if user.role == 'system_admin' or user.is_superuser:
+            return Response({
+                'ok': True,
+                'hasPermission': True,
+                'role': 'system_admin',
+                'reason': 'system_admin',
+                'club': {
+                    'id': club.id,
+                    'name': club.name
+                }
+            })
+        
+        # ⭐️⭐️⭐️ Priority 1: ClubMembership (SOURCE OF TRUTH)
+        try:
+            membership = ClubMembership.objects.get(user=user, club=club)
+            has_permission = membership.role in ['president', 'admin']
+            return Response({
+                'ok': True,
+                'hasPermission': has_permission,
+                'role': membership.role,
+                'reason': 'club_membership',
+                'club': {
+                    'id': club.id,
+                    'name': club.name
+                },
+                'membership': {
+                    'joinedDate': membership.joined_at
+                }
+            })
+        except ClubMembership.DoesNotExist:
+            pass
+        
+        # ⭐️⭐️ Priority 2: User.role fallback
+        if user.role == 'club_admin':
+            return Response({
+                'ok': True,
+                'hasPermission': True,
+                'role': 'club_admin',
+                'reason': 'user_role_fallback',
+                'club': {
+                    'id': club.id,
+                    'name': club.name
+                },
+                'warning': 'ClubMembership record not found'
+            })
+        
+        # ⭐️ Priority 3: Legacy checks
+        if club.president == user:
+            return Response({
+                'ok': True,
+                'hasPermission': True,
+                'role': 'president',
+                'reason': 'fallback_president',
+                'club': {
+                    'id': club.id,
+                    'name': club.name
+                },
+                'warning': 'ClubMembership record not found (using legacy check)'
+            })
+        
+        if club.admins.filter(id=user.id).exists():
+            return Response({
+                'ok': True,
+                'hasPermission': True,
+                'role': 'admin',
+                'reason': 'fallback_admin',
+                'club': {
+                    'id': club.id,
+                    'name': club.name
+                },
+                'warning': 'ClubMembership record not found (using legacy check)'
+            })
+        
+        # No permission
+        return Response({
+            'ok': True,
+            'hasPermission': False,
+            'role': None,
+            'reason': 'none',
+            'club': {
+                'id': club.id,
+                'name': club.name
+            }
+        })

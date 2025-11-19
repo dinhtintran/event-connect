@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-wp90+g=!)zz8$vf0qtad9k@=4#%&6dawayoe!m&20u%g8(vk9j
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']  # Allow all hosts in development
 
 
 # Application definition

@@ -67,7 +67,7 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
             'notification_id': notification.id
         })
     
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], url_path='unread-count')
     def unread_count(self, request):
         """Get count of unread notifications"""
         count = Notification.objects.filter(
@@ -77,7 +77,7 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
         
         return Response({'unread_count': count})
     
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], url_path='mark-all-read')
     def mark_all_read(self, request):
         """Mark all notifications as read"""
         updated = Notification.objects.filter(
@@ -139,14 +139,17 @@ def admin_stats(request):
     }
     
     # Top events
+    # Annotate registration_count since it's a @property
     top_events = Event.objects.filter(
         status='approved'
-    ).order_by('-registration_count', '-average_rating')[:5]
+    ).annotate(
+        reg_count=Count('registrations', filter=Q(registrations__status='registered'))
+    ).order_by('-reg_count', '-average_rating')[:5]
     
     top_events_data = [{
         'id': event.id,
         'title': event.title,
-        'registration_count': event.registration_count,
+        'registration_count': event.reg_count,
         'average_rating': float(event.average_rating)
     } for event in top_events]
     

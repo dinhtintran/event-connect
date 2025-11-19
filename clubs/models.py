@@ -51,6 +51,12 @@ class ClubMembership(models.Model):
     class Meta:
         db_table = 'club_memberships'
         unique_together = ['user', 'club']
+        # Add composite indexes for faster permission lookups
+        indexes = [
+            models.Index(fields=['user', 'club'], name='clubmember_user_club_idx'),
+            models.Index(fields=['club', 'role'], name='clubmember_club_role_idx'),
+            models.Index(fields=['user', 'role'], name='clubmember_user_role_idx'),
+        ]
     
     def __str__(self):
         return f"{self.user.username} - {self.club.name} ({self.get_role_display()})"

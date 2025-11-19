@@ -1,5 +1,7 @@
 from django.contrib import admin
-from .models import Event, EventRegistration, Feedback, EventApproval, EventImage
+from django.utils import timezone
+from django.contrib import messages
+from .models import Event, EventRegistration, Feedback, EventApproval, EventImage, EventCancellationRequest, SavedEvent
 
 
 class EventImageInline(admin.TabularInline):
@@ -93,6 +95,7 @@ class EventApprovalAdmin(admin.ModelAdmin):
     search_fields = ('event__title', 'reviewer__username', 'comment')
     readonly_fields = ('submitted_at', 'reviewed_at')
     ordering = ('-submitted_at',)
+    actions = ['approve_events', 'reject_events']
     
     fieldsets = (
         ('Approval Info', {
@@ -102,6 +105,97 @@ class EventApprovalAdmin(admin.ModelAdmin):
             'fields': ('submitted_at', 'reviewed_at')
         }),
     )
+    
+    @admin.action(description='✅ Phê duyệt các sự kiện đã chọn')
+    def approve_events(self, request, queryset):
+        """Approve selected events from admin panel"""
+        pending_approvals = queryset.filter(status='pending')
+        
+        if not pending_approvals.exists():
+            self.message_user(
+                request,
+                'Không có yêu cầu nào đang chờ phê duyệt!',
+                level=messages.WARNING
+            )
+            return
+        
+        approved_count = 0
+        for approval in pending_approvals:
+            # Update approval
+            approval.status = 'approved'
+            approval.reviewer = request.user
+            approval.reviewed_at = timezone.now()
+            approval.comment = f'Phê duyệt bởi {request.user.username} từ Admin Panel'
+            approval.save()
+            
+            # Update event
+            event = approval.event
+            event.status = 'approved'
+            event.approved_at = timezone.now()
+            event.save(update_fields=['status', 'approved_at'])
+            
+            # Create notification
+            from notifications.models import Notification
+            Notification.objects.create(
+                user=event.created_by,
+                type='event_approved',
+                title='Sự kiện được phê duyệt',
+                message=f'Sự kiện "{event.title}" đã được phê duyệt',
+                event=event
+            )
+            
+            approved_count += 1
+        
+        self.message_user(
+            request,
+            f'Đã phê duyệt thành công {approved_count} sự kiện!',
+            level=messages.SUCCESS
+        )
+    
+    @admin.action(description='❌ Từ chối các sự kiện đã chọn')
+    def reject_events(self, request, queryset):
+        """Reject selected events from admin panel"""
+        pending_approvals = queryset.filter(status='pending')
+        
+        if not pending_approvals.exists():
+            self.message_user(
+                request,
+                'Không có yêu cầu nào đang chờ phê duyệt!',
+                level=messages.WARNING
+            )
+            return
+        
+        rejected_count = 0
+        for approval in pending_approvals:
+            # Update approval
+            approval.status = 'rejected'
+            approval.reviewer = request.user
+            approval.reviewed_at = timezone.now()
+            approval.comment = f'Từ chối bởi {request.user.username} từ Admin Panel'
+            approval.save()
+            
+            # Update event
+            event = approval.event
+            event.status = 'rejected'
+            event.save(update_fields=['status'])
+            
+            # Create notification
+            from notifications.models import Notification
+            Notification.objects.create(
+                user=event.created_by,
+                type='event_rejected',
+                title='Sự kiện bị từ chối',
+                message=f'Sự kiện "{event.title}" đã bị từ chối. Lý do: {approval.comment}',
+                event=event
+            )
+            
+            rejected_count += 1
+        
+        self.message_user(
+            request,
+            f'Đã từ chối {rejected_count} sự kiện!',
+            level=messages.SUCCESS
+        )
 
 
 @admin.register(EventImage)
@@ -111,3 +205,144 @@ class EventImageAdmin(admin.ModelAdmin):
     search_fields = ('event__title', 'caption')
     readonly_fields = ('uploaded_at',)
     ordering = ('event', 'order', '-uploaded_at')
+
+
+@admin.register(EventCancellationRequest)
+class EventCancellationRequestAdmin(admin.ModelAdmin):
+    list_display = ('event', 'requested_by', 'status', 'created_at', 'reviewed_by', 'reviewed_at')
+    list_filter = ('status', 'created_at', 'reviewed_at')
+    search_fields = ('event__title', 'requested_by__username', 'reason')
+    readonly_fields = ('created_at', 'updated_at')
+    ordering = ('-created_at',)
+    date_hierarchy = 'created_at'
+    actions = ['approve_cancellations', 'reject_cancellations']
+    
+    fieldsets = (
+        ('Request Information', {
+            'fields': ('event', 'requested_by', 'reason', 'refund_policy', 'alternative_action')
+        }),
+        ('Review', {
+            'fields': ('status', 'reviewed_by', 'reviewed_at', 'admin_comment')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at')
+        }),
+    )
+    
+    @admin.action(description='✅ Chấp nhận yêu cầu hủy đã chọn')
+    def approve_cancellations(self, request, queryset):
+        """Approve selected cancellation requests from admin panel"""
+        pending_requests = queryset.filter(status='pending')
+        
+        if not pending_requests.exists():
+            self.message_user(
+                request,
+                'Không có yêu cầu nào đang chờ xét duyệt!',
+                level=messages.WARNING
+            )
+            return
+        
+        approved_count = 0
+        for cancellation_request in pending_requests:
+            # Update cancellation request
+            cancellation_request.status = 'approved'
+            cancellation_request.reviewed_by = request.user
+            cancellation_request.reviewed_at = timezone.now()
+            cancellation_request.admin_comment = f'Chấp nhận bởi {request.user.username} từ Admin Panel'
+            cancellation_request.save()
+            
+            # Cancel the event
+            event = cancellation_request.event
+            event.status = 'cancelled'
+            event.save(update_fields=['status'])
+            
+            # Notify all participants
+            from notifications.models import Notification
+            registrations = EventRegistration.objects.filter(
+                event=event,
+                status__in=['registered', 'attended']
+            ).select_related('user')
+            
+            for reg in registrations:
+                Notification.objects.create(
+                    user=reg.user,
+                    type='event_cancelled',
+                    title='Sự kiện bị hủy',
+                    message=f'Sự kiện "{event.title}" đã bị hủy. Lý do: {cancellation_request.reason}',
+                    event=event
+                )
+            
+            # Notify club admin
+            Notification.objects.create(
+                user=cancellation_request.requested_by,
+                type='cancellation_approved',
+                title='Yêu cầu hủy được chấp nhận',
+                message=f'Yêu cầu hủy sự kiện "{event.title}" đã được phê duyệt',
+                event=event
+            )
+            
+            approved_count += 1
+        
+        self.message_user(
+            request,
+            f'Đã chấp nhận {approved_count} yêu cầu hủy sự kiện!',
+            level=messages.SUCCESS
+        )
+    
+    @admin.action(description='❌ Từ chối yêu cầu hủy đã chọn')
+    def reject_cancellations(self, request, queryset):
+        """Reject selected cancellation requests from admin panel"""
+        pending_requests = queryset.filter(status='pending')
+        
+        if not pending_requests.exists():
+            self.message_user(
+                request,
+                'Không có yêu cầu nào đang chờ xét duyệt!',
+                level=messages.WARNING
+            )
+            return
+        
+        rejected_count = 0
+        for cancellation_request in pending_requests:
+            # Update cancellation request
+            cancellation_request.status = 'rejected'
+            cancellation_request.reviewed_by = request.user
+            cancellation_request.reviewed_at = timezone.now()
+            cancellation_request.admin_comment = f'Từ chối bởi {request.user.username} từ Admin Panel'
+            cancellation_request.save()
+            
+            # Notify club admin
+            from notifications.models import Notification
+            event = cancellation_request.event
+            
+            Notification.objects.create(
+                user=cancellation_request.requested_by,
+                type='cancellation_rejected',
+                title='Yêu cầu hủy bị từ chối',
+                message=f'Yêu cầu hủy sự kiện "{event.title}" bị từ chối. Lý do: {cancellation_request.admin_comment}',
+                event=event
+            )
+            
+            rejected_count += 1
+        
+        self.message_user(
+            request,
+            f'Đã từ chối {rejected_count} yêu cầu hủy sự kiện!',
+            level=messages.SUCCESS
+        )
+
+
+@admin.register(SavedEvent)
+class SavedEventAdmin(admin.ModelAdmin):
+    list_display = ('user', 'event', 'saved_at')
+    list_filter = ('saved_at', 'event__club')
+    search_fields = ('user__username', 'user__email', 'event__title')
+    readonly_fields = ('saved_at',)
+    ordering = ('-saved_at',)
+    date_hierarchy = 'saved_at'
+    
+    fieldsets = (
+        ('Saved Event Info', {
+            'fields': ('user', 'event', 'saved_at')
+        }),
+    )

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Event, EventRegistration, Feedback, EventApproval, EventImage
+from .models import Event, EventRegistration, Feedback, EventApproval, EventImage, EventCancellationRequest, SavedEvent
 from accounts.serializers import UserSerializer
 from clubs.serializers import ClubSerializer
 
@@ -15,15 +15,33 @@ class EventListSerializer(serializers.ModelSerializer):
     club = ClubSerializer(read_only=True)
     is_full = serializers.ReadOnlyField()
     is_registration_open = serializers.ReadOnlyField()
+    is_saved = serializers.SerializerMethodField()
+    
+    # Multiple participant counts
+    registration_count = serializers.ReadOnlyField()
+    checked_in_count = serializers.ReadOnlyField()
+    attended_count = serializers.ReadOnlyField()
+    total_participants = serializers.ReadOnlyField()
+    
+    def get_is_saved(self, obj):
+        """Check if current user has saved this event"""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return SavedEvent.objects.filter(
+                user=request.user,
+                event=obj
+            ).exists()
+        return False
     
     class Meta:
         model = Event
         fields = (
             'id', 'title', 'slug', 'description', 'category', 'club',
             'location', 'start_at', 'end_at', 'registration_start', 'registration_end',
-            'capacity', 'registration_count', 'is_full', 'is_registration_open',
+            'capacity', 'registration_count', 'checked_in_count', 'attended_count',
+            'total_participants', 'is_full', 'is_registration_open',
             'poster', 'status', 'is_featured', 'view_count', 'average_rating',
-            'rating_count', 'created_at'
+            'rating_count', 'created_at', 'is_saved'
         )
 
 
@@ -35,12 +53,19 @@ class EventDetailSerializer(serializers.ModelSerializer):
     is_registration_open = serializers.ReadOnlyField()
     user_registration = serializers.SerializerMethodField()
     
+    # Multiple participant counts
+    registration_count = serializers.ReadOnlyField()
+    checked_in_count = serializers.ReadOnlyField()
+    attended_count = serializers.ReadOnlyField()
+    total_participants = serializers.ReadOnlyField()
+    
     class Meta:
         model = Event
         fields = (
             'id', 'title', 'slug', 'description', 'category', 'club', 'created_by',
             'location', 'location_detail', 'start_at', 'end_at',
             'registration_start', 'registration_end', 'capacity', 'registration_count',
+            'checked_in_count', 'attended_count', 'total_participants',
             'is_full', 'is_registration_open', 'poster', 'banner', 'images',
             'status', 'is_featured', 'requires_approval', 'view_count',
             'average_rating', 'rating_count', 'user_registration',
@@ -89,11 +114,15 @@ class EventCreateUpdateSerializer(serializers.ModelSerializer):
 
 
 class EventFeaturedSerializer(serializers.ModelSerializer):
+    # Multiple participant counts
+    registration_count = serializers.ReadOnlyField()
+    total_participants = serializers.ReadOnlyField()
+    
     class Meta:
         model = Event
         fields = (
             'id', 'title', 'poster', 'start_at', 'category',
-            'registration_count', 'capacity', 'average_rating'
+            'registration_count', 'total_participants', 'capacity', 'average_rating'
         )
 
 
@@ -161,3 +190,83 @@ class EventApprovalSerializer(serializers.ModelSerializer):
 
 class EventApprovalActionSerializer(serializers.Serializer):
     comment = serializers.CharField(required=False, allow_blank=True)
+
+
+# ============= EVENT CANCELLATION REQUEST SERIALIZERS =============
+class EventCancellationRequestSerializer(serializers.ModelSerializer):
+    """Serializer for listing cancellation requests"""
+    event = EventListSerializer(read_only=True)
+    requested_by = serializers.SerializerMethodField()
+    reviewed_by = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = EventCancellationRequest
+        fields = [
+            'id', 'event', 'requested_by', 'reason', 
+            'refund_policy', 'alternative_action',
+            'status', 'reviewed_by', 'reviewed_at', 
+            'admin_comment', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def get_requested_by(self, obj):
+        return {
+            'id': obj.requested_by.id,
+            'username': obj.requested_by.username,
+            'email': obj.requested_by.email,
+            'full_name': f"{obj.requested_by.first_name} {obj.requested_by.last_name}".strip() or obj.requested_by.username
+        }
+    
+    def get_reviewed_by(self, obj):
+        if not obj.reviewed_by:
+            return None
+        return {
+            'id': obj.reviewed_by.id,
+            'username': obj.reviewed_by.username,
+            'email': obj.reviewed_by.email
+        }
+
+
+class EventCancellationRequestCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating cancellation request"""
+    class Meta:
+        model = EventCancellationRequest
+        fields = ['reason', 'refund_policy', 'alternative_action']
+    
+    def validate_reason(self, value):
+        if len(value.strip()) < 20:
+            raise serializers.ValidationError(
+                "Reason must be at least 20 characters"
+            )
+        return value
+
+
+class EventCancellationRequestReviewSerializer(serializers.Serializer):
+    """Serializer for admin reviewing cancellation request"""
+    action = serializers.ChoiceField(choices=['approve', 'reject'], required=True)
+    admin_comment = serializers.CharField(required=False, allow_blank=True)
+    
+    def validate_admin_comment(self, value):
+        action = self.initial_data.get('action')
+        if action == 'reject' and not value.strip():
+            raise serializers.ValidationError(
+                "Admin comment is required when rejecting"
+            )
+        return value
+
+
+# ============= SAVED EVENT SERIALIZERS =============
+
+class SavedEventSerializer(serializers.ModelSerializer):
+    """Serializer for saved events list"""
+    event = EventListSerializer(read_only=True)
+    
+    class Meta:
+        model = SavedEvent
+        fields = ['id', 'event', 'saved_at']
+        read_only_fields = ['id', 'saved_at']
+
+
+class SavedEventActionSerializer(serializers.Serializer):
+    """Serializer for save/unsave actions - no fields needed"""
+    pass
