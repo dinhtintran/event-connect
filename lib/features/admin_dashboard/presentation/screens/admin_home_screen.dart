@@ -27,7 +27,10 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadData();
+    // Defer data loading to avoid calling setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadData();
+    });
   }
 
   Future<void> _loadData() async {
@@ -52,7 +55,11 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     if (response['status'] == 200) {
       final results = response['body']['results'] as List<dynamic>;
       setState(() {
-        _pendingEvents = results.map((json) => Event.fromJson(json['event'])).toList();
+        // Filter to only show pending events (not rejected/approved)
+        _pendingEvents = results
+            .map((json) => Event.fromJson(json['event']))
+            .where((event) => event.status == null || event.status == 'pending')
+            .toList();
         _isLoadingPendingEvents = false;
       });
     } else {
@@ -121,89 +128,132 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     }
   }
 
-  void _handleApproveEvent(Event event) {
-    showDialog(
+  Future<void> _handleApproveEvent(Event event) async {
+    final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) =>
-          AlertDialog(
-            title: const Text('Phê duyệt sự kiện'),
-            content: Text(
-                'Bạn có chắc chắn muốn phê duyệt sự kiện "${event.title}"?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Hủy'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  // TODO: Call API to approve event
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Đã phê duyệt sự kiện "${event.title}"'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                ),
-                child: const Text('Phê duyệt'),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        title: const Text('Phê duyệt sự kiện'),
+        content: Text(
+            'Bạn có chắc chắn muốn phê duyệt sự kiện "${event.title}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy'),
           ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+            ),
+            child: const Text('Phê duyệt'),
+          ),
+        ],
+      ),
     );
+
+    if (confirmed == true && mounted) {
+      final admin = context.read<AdminService>();
+      final success = await admin.approveEvent(event.id.toString());
+      
+      if (mounted) {
+        if (success) {
+          // Reload data to update UI
+          _loadData();
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Đã phê duyệt sự kiện "${event.title}"'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Không thể phê duyệt sự kiện'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 
-  void _handleRejectEvent(Event event) {
+  Future<void> _handleRejectEvent(Event event) async {
     final reasonController = TextEditingController();
-    
-    showDialog(
+
+    final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) =>
-          AlertDialog(
-            title: const Text('Từ chối sự kiện'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Bạn có chắc chắn muốn từ chối sự kiện "${event.title}"?'),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: reasonController,
-                  decoration: const InputDecoration(
-                    labelText: 'Lý do từ chối',
-                    border: OutlineInputBorder(),
-                    hintText: 'Nhập lý do từ chối...',
-                  ),
-                  maxLines: 3,
-                ),
-              ],
+      builder: (context) => AlertDialog(
+        title: const Text('Từ chối sự kiện'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Bạn có chắc chắn muốn từ chối sự kiện "${event.title}"?'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                labelText: 'Lý do từ chối *',
+                border: OutlineInputBorder(),
+                hintText: 'Nhập lý do từ chối...',
+              ),
+              maxLines: 3,
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Hủy'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  // TODO: Call API to reject event
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Đã từ chối sự kiện "${event.title}"'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                ),
-                child: const Text('Từ chối'),
-              ),
-            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy'),
           ),
+          ElevatedButton(
+            onPressed: () {
+              if (reasonController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Vui lòng nhập lý do từ chối')),
+                );
+                return;
+              }
+              Navigator.pop(context, true);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Từ chối'),
+          ),
+        ],
+      ),
     );
+
+    if (confirmed == true && mounted) {
+      final reason = reasonController.text.trim();
+      if (reason.isEmpty) return;
+
+      final admin = context.read<AdminService>();
+      final success = await admin.rejectEvent(event.id.toString(), reason: reason);
+      
+      if (mounted) {
+        if (success) {
+          // Reload data to update UI
+          _loadData();
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Đã từ chối sự kiện "${event.title}"'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Không thể từ chối sự kiện'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 
   void _onNavigationTapped(int index) {
@@ -213,15 +263,21 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     // Navigate to the appropriate screen for admin tabs.
     // Index mapping (as defined in AppNavBar for system_admin):
     // 0 -> Dashboard (stay on admin home)
-    // 1 -> Approvals
-    // 2 -> Reports (not implemented)
-    // 3 -> Profile
+    // 1 -> User Management
+    // 2 -> Event Management
+    // 3 -> Reports (not implemented)
+    // 4 -> Profile
     if (index == 1) {
-      // Open the approval screen
-      Navigator.of(context).pushReplacementNamed(AppRoutes.approval);
+      // Open user management screen
+      Navigator.of(context).pushNamed('/admin/users');
       return;
     }
-    if (index == 3) {
+    if (index == 2) {
+      // Open event management screen
+      Navigator.of(context).pushNamed('/admin/events');
+      return;
+    }
+    if (index == 4) {
       // Open profile screen
       Navigator.of(context).pushNamed(AppRoutes.profile);
       return;
@@ -382,30 +438,34 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                         children: [
                           QuickActionButton(
                             icon: Icons.people_outline,
-                            label: 'Quản lý người dùng',
+                            label: 'Quản lý Người dùng',
                             onTap: () {
-                              // TODO: Navigate to user management
+                              Navigator.of(context).pushNamed('/admin/users');
                             },
                           ),
                           QuickActionButton(
-                            icon: Icons.visibility_outlined,
-                            label: 'Xem báo cáo',
+                            icon: Icons.event_outlined,
+                            label: 'Quản lý Sự kiện',
                             onTap: () {
-                              // TODO: Navigate to reports
+                              Navigator.of(context).pushNamed('/admin/events');
+                            },
+                          ),
+                          QuickActionButton(
+                            icon: Icons.assessment_outlined,
+                            label: 'Thống kê Chi tiết',
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Tính năng đang phát triển')),
+                              );
                             },
                           ),
                           QuickActionButton(
                             icon: Icons.settings_outlined,
-                            label: 'Cài đặt ứng dụng',
+                            label: 'Cài đặt Hệ thống',
                             onTap: () {
-                              // TODO: Navigate to settings
-                            },
-                          ),
-                          QuickActionButton(
-                            icon: Icons.check_circle_outline,
-                            label: 'Phê duyệt sự kiện',
-                            onTap: () {
-                              Navigator.of(context).pushReplacementNamed(AppRoutes.approval);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Tính năng đang phát triển')),
+                              );
                             },
                           ),
                         ],
@@ -414,12 +474,12 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                     ],
                   ),
                 ),
-      bottomNavigationBar: AppNavBar(
-        currentIndex: _selectedIndex,
-        onTap: _onNavigationTapped,
-        roleOverride: 'system_admin',
-      ),
-    );
+          bottomNavigationBar: AppNavBar(
+            currentIndex: _selectedIndex,
+            onTap: _onNavigationTapped,
+            roleOverride: 'system_admin',
+          ),
+        );
       },
     );
   }

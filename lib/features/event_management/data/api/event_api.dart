@@ -13,11 +13,12 @@ class EventApi {
     print('[EventApi] $s');
   }
 
-  /// GET /api/events/ - Lấy danh sách tất cả sự kiện
+  /// GET /api/events/?status=approved - Lấy danh sách sự kiện đã được phê duyệt
+  /// Chỉ hiển thị sự kiện có status='approved' cho student
   Future<Map<String, dynamic>> getAllEvents() async {
-    _dbg('GET /api/events/');
+    _dbg('GET /api/events/?status=approved');
     try {
-      final res = await dio.get('/api/events/');
+      final res = await dio.get('/api/events/', queryParameters: {'status': 'approved'});
       _dbg('response ${res.statusCode} ${res.requestOptions.uri}');
       return {'status': res.statusCode, 'body': res.data};
     } on DioException catch (e) {
@@ -77,11 +78,14 @@ class EventApi {
     }
   }
 
-  /// GET /api/events/?category={category} - Lọc sự kiện theo danh mục
-  Future<Map<String, dynamic>> filterEventsByCategory(String category) async {
-    _dbg('GET /api/events/?category=$category');
+  /// GET /api/events/?category={category}&status=approved - Lọc sự kiện đã phê duyệt theo danh mục
+  Future<Map<String, dynamic>> getEventsByCategory(String category) async {
+    _dbg('GET /api/events/?category=$category&status=approved');
     try {
-      final res = await dio.get('/api/events/', queryParameters: {'category': category});
+      final res = await dio.get('/api/events/', queryParameters: {
+        'category': category,
+        'status': 'approved',  // Chỉ lấy sự kiện đã phê duyệt
+      });
       _dbg('response ${res.statusCode} ${res.requestOptions.uri}');
       return {'status': res.statusCode, 'body': res.data};
     } on DioException catch (e) {
@@ -207,6 +211,22 @@ class EventApi {
     }
   }
 
+  /// DELETE /api/events/{id}/ - Xóa sự kiện (Club Admin, chỉ cho phép xóa sự kiện chưa được phê duyệt)
+  Future<Map<String, dynamic>> deleteEvent(String eventId) async {
+    _dbg('DELETE /api/events/$eventId/');
+    try {
+      final res = await dio.delete('/api/events/$eventId/');
+      _dbg('response ${res.statusCode} ${res.requestOptions.uri}');
+      return {'status': res.statusCode, 'body': res.data ?? {'message': 'Event deleted successfully'}};
+    } on DioException catch (e) {
+      _dbg('DioException: type=${e.type} status=${e.response?.statusCode} error=${e.message}');
+      return {'status': e.response?.statusCode ?? 0, 'body': e.response?.data ?? {'detail': e.message}};
+    } catch (e) {
+      _dbg('Exception: $e');
+      return {'status': 0, 'body': {'detail': e.toString()}};
+    }
+  }
+
   /// GET /api/events/?club_id={club_id} - Lấy danh sách sự kiện của CLB
   Future<Map<String, dynamic>> getEventsByClub(String clubId, {String? status, int? page, int? pageSize}) async {
     _dbg('GET /api/events/?club_id=$clubId');
@@ -234,6 +254,86 @@ class EventApi {
     } on DioException catch (e) {
       _dbg('DioException: type=${e.type} status=${e.response?.statusCode} error=${e.message}');
       return {'status': e.response?.statusCode ?? 0, 'body': e.response?.data ?? {'detail': e.message}};
+    } catch (e) {
+      _dbg('Exception: $e');
+      return {'status': 0, 'body': {'detail': e.toString()}};
+    }
+  }
+
+  // ==================== SAVED EVENTS API ====================
+
+  /// GET /api/events/saved/ - Lấy danh sách sự kiện đã lưu
+  Future<Map<String, dynamic>> getSavedEvents({int page = 1}) async {
+    _dbg('GET /api/events/saved/?page=$page');
+    try {
+      final res = await dio.get('/api/events/saved/', queryParameters: {
+        'page': page,
+      });
+      _dbg('response ${res.statusCode} ${res.requestOptions.uri}');
+      return {'status': res.statusCode, 'body': res.data};
+    } on DioException catch (e) {
+      _dbg('DioException: ${e.message}');
+      return {
+        'status': e.response?.statusCode ?? 0,
+        'body': e.response?.data ?? {'detail': e.message}
+      };
+    } catch (e) {
+      _dbg('Exception: $e');
+      return {'status': 0, 'body': {'detail': e.toString()}};
+    }
+  }
+
+  /// POST /api/events/{eventId}/save/ - Lưu sự kiện
+  Future<Map<String, dynamic>> saveEvent(String eventId) async {
+    _dbg('POST /api/events/$eventId/save/');
+    try {
+      final res = await dio.post('/api/events/$eventId/save/');
+      _dbg('response ${res.statusCode} ${res.requestOptions.uri}');
+      return {'status': res.statusCode, 'body': res.data};
+    } on DioException catch (e) {
+      _dbg('DioException: ${e.message}');
+      return {
+        'status': e.response?.statusCode ?? 0,
+        'body': e.response?.data ?? {'detail': e.message}
+      };
+    } catch (e) {
+      _dbg('Exception: $e');
+      return {'status': 0, 'body': {'detail': e.toString()}};
+    }
+  }
+
+  /// POST /api/events/{eventId}/unsave/ - Bỏ lưu sự kiện
+  Future<Map<String, dynamic>> unsaveEvent(String eventId) async {
+    _dbg('POST /api/events/$eventId/unsave/');
+    try {
+      final res = await dio.post('/api/events/$eventId/unsave/');
+      _dbg('response ${res.statusCode} ${res.requestOptions.uri}');
+      return {'status': res.statusCode, 'body': res.data};
+    } on DioException catch (e) {
+      _dbg('DioException: ${e.message}');
+      return {
+        'status': e.response?.statusCode ?? 0,
+        'body': e.response?.data ?? {'detail': e.message}
+      };
+    } catch (e) {
+      _dbg('Exception: $e');
+      return {'status': 0, 'body': {'detail': e.toString()}};
+    }
+  }
+
+  /// GET /api/events/{eventId}/is-saved/ - Kiểm tra đã lưu chưa
+  Future<Map<String, dynamic>> isEventSaved(String eventId) async {
+    _dbg('GET /api/events/$eventId/is-saved/');
+    try {
+      final res = await dio.get('/api/events/$eventId/is-saved/');
+      _dbg('response ${res.statusCode} ${res.requestOptions.uri}');
+      return {'status': res.statusCode, 'body': res.data};
+    } on DioException catch (e) {
+      _dbg('DioException: ${e.message}');
+      return {
+        'status': e.response?.statusCode ?? 0,
+        'body': e.response?.data ?? {'detail': e.message}
+      };
     } catch (e) {
       _dbg('Exception: $e');
       return {'status': 0, 'body': {'detail': e.toString()}};

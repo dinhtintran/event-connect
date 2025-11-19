@@ -6,6 +6,7 @@
 /// ```dart
 /// import 'package:event_connect/features/event_management/event_management.dart';
 /// ```
+library;
 
 // Domain
 export 'domain/models/event.dart';

@@ -12,7 +12,11 @@ class ClubEventCard extends StatelessWidget {
   final String image;
   final VoidCallback? onEdit;
   final VoidCallback? onViewParticipants;
+  final VoidCallback? onDelete;
+  final VoidCallback? onRequestCancellation;
   final VoidCallback? onTap;
+  final bool canDelete; // Cho phép xóa hay không (dựa vào trạng thái)
+  final bool canRequestCancellation; // Cho phép yêu cầu hủy (chỉ với approved events)
 
   const ClubEventCard({
     super.key,
@@ -25,7 +29,11 @@ class ClubEventCard extends StatelessWidget {
     required this.image,
     this.onEdit,
     this.onViewParticipants,
+    this.onDelete,
+    this.onRequestCancellation,
     this.onTap,
+    this.canDelete = false,
+    this.canRequestCancellation = false,
   });
 
   @override
@@ -168,6 +176,34 @@ class ClubEventCard extends StatelessWidget {
                           ),
                           icon: const Icon(Icons.edit, size: 18),
                           label: const Text('Chỉnh sửa'),
+                        ),
+                      if (canDelete && onDelete != null)
+                        OutlinedButton.icon(
+                          onPressed: onDelete,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.red,
+                            side: const BorderSide(color: Colors.red),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                          icon: const Icon(Icons.delete_outline, size: 18),
+                          label: const Text('Xóa'),
+                        ),
+                      if (canRequestCancellation && onRequestCancellation != null)
+                        OutlinedButton.icon(
+                          onPressed: onRequestCancellation,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.orange,
+                            side: const BorderSide(color: Colors.orange),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                          icon: const Icon(Icons.cancel_outlined, size: 18),
+                          label: const Text('Yêu cầu hủy'),
                         ),
                       ElevatedButton(
                         onPressed: onTap,

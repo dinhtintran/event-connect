@@ -2,21 +2,25 @@ import 'package:dio/dio.dart';
 import 'package:event_connect/core/api/club_api.dart';
 import 'package:event_connect/core/api/notification_api.dart';
 import 'package:event_connect/features/event_management/data/api/event_api.dart';
+import 'package:event_connect/features/event_creation/data/api/event_cancellation_api.dart';
 
 /// ClubAdminApi - API client cho các tính năng của Club Admin
 class ClubAdminApi {
   final ClubApi clubApi;
   final EventApi eventApi;
   final NotificationApi notificationApi;
+  final EventCancellationApi cancellationApi;
 
   ClubAdminApi({
     ClubApi? clubApi,
     EventApi? eventApi,
     NotificationApi? notificationApi,
+    EventCancellationApi? cancellationApi,
     Dio? dio,
   })  : clubApi = clubApi ?? ClubApi(dio: dio),
         eventApi = eventApi ?? EventApi(dio: dio),
-        notificationApi = notificationApi ?? NotificationApi(dio: dio);
+        notificationApi = notificationApi ?? NotificationApi(dio: dio),
+        cancellationApi = cancellationApi ?? EventCancellationApi(dio: dio);
 
   void _dbg(String s) {
     // ignore: avoid_print
@@ -98,10 +102,38 @@ class ClubAdminApi {
     return await eventApi.updateEvent(eventId, eventData);
   }
   
+  /// Xóa sự kiện (chỉ cho phép xóa sự kiện chưa được phê duyệt)
+  Future<Map<String, dynamic>> deleteEvent(String eventId) async {
+    _dbg('deleteEvent: eventId=$eventId');
+    return await eventApi.deleteEvent(eventId);
+  }
+  
   /// Tạo sự kiện mới cho CLB
   Future<Map<String, dynamic>> createEvent(String clubId, Map<String, dynamic> eventData) async {
     _dbg('createEvent: clubId=$clubId');
     return await clubApi.createEvent(clubId, eventData);
+  }
+  
+  /// Yêu cầu hủy sự kiện (chỉ cho sự kiện đã approved)
+  Future<Map<String, dynamic>> requestCancellation({
+    required String eventId,
+    required String reason,
+    String? refundPolicy,
+    String? alternativeAction,
+  }) async {
+    _dbg('requestCancellation: eventId=$eventId');
+    return await cancellationApi.requestCancellation(
+      eventId: eventId,
+      reason: reason,
+      refundPolicy: refundPolicy,
+      alternativeAction: alternativeAction,
+    );
+  }
+  
+  /// Lấy danh sách yêu cầu hủy của sự kiện
+  Future<Map<String, dynamic>> getEventCancellationRequests(String eventId) async {
+    _dbg('getEventCancellationRequests: eventId=$eventId');
+    return await cancellationApi.getEventCancellationRequests(eventId);
   }
 }
 

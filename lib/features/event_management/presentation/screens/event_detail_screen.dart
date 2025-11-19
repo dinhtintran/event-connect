@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:event_connect/features/event_management/domain/models/event.dart';
+import 'package:event_connect/features/event_management/domain/services/event_service.dart';
 import 'package:event_connect/features/event_management/data/api/event_api.dart';
 
 class EventDetailScreen extends StatefulWidget {
@@ -24,10 +26,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   bool isRegistered = false;
   bool isLoadingRegistration = true;
   bool isRegistering = false;
+  bool isSavingFavorite = false;  // Add loading state for save/unsave
 
   @override
   void initState() {
     super.initState();
+    isFavorite = widget.event.isSaved;  // ✨ Initialize from event data
     _checkRegistrationStatus();
   }
 
@@ -107,6 +111,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           isRegistered = true;
           isRegistering = false;
         });
+
+        // ✅ Reload EventService to update My Events list
+        if (mounted) {
+          context.read<EventService>().loadMyRegisteredEvents();
+        }
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -279,17 +288,60 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                           ],
                         ),
                       ),
-                      // Favorite and Share buttons
+                      // Share button and Favorite button
                       Positioned(
                         top: 140,
                         right: 16,
                         child: Column(
                           children: [
                             GestureDetector(
-                              onTap: () {
+                              onTap: isSavingFavorite ? null : () async {
+                                // Prevent multiple rapid clicks
+                                if (isSavingFavorite) return;
+                                
                                 setState(() {
-                                  isFavorite = !isFavorite;
+                                  isSavingFavorite = true;
                                 });
+                                
+                                try {
+                                  // Toggle save/unsave
+                                  final eventService = Provider.of<EventService>(context, listen: false);
+                                  final success = await eventService.toggleSaveEvent(widget.event);
+                                  
+                                  if (success) {
+                                    setState(() {
+                                      isFavorite = !isFavorite;
+                                    });
+                                    
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            isFavorite 
+                                                ? 'Đã lưu sự kiện' 
+                                                : 'Đã bỏ lưu sự kiện'
+                                          ),
+                                          duration: const Duration(seconds: 2),
+                                        ),
+                                      );
+                                    }
+                                  } else {
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Có lỗi xảy ra, vui lòng thử lại'),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                } finally {
+                                  if (mounted) {
+                                    setState(() {
+                                      isSavingFavorite = false;
+                                    });
+                                  }
+                                }
                               },
                               child: Container(
                                 padding: const EdgeInsets.all(8),
@@ -443,9 +495,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                               size: 24,
                             ),
                             const SizedBox(width: 12),
-                            const Text(
-                              '150 người tham dự',
-                              style: TextStyle(
+                            Text(
+                              widget.event.participantDisplayText,
+                              style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
                                 color: Color(0xFF120D26),
@@ -500,55 +552,101 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               child: isLoadingRegistration
                   ? const Center(child: CircularProgressIndicator())
                   : isRegistered
-                      ? Row(
+                      ? Column(
                           children: [
-                            // Đã đăng ký button (disabled/info only)
-                            Expanded(
-                              flex: 2,
-                              child: Container(
+                            // Check-in button
+                            ElevatedButton(
+                              onPressed: _handleCheckIn,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF5669FF),
+                                foregroundColor: Colors.white,
                                 padding: const EdgeInsets.symmetric(vertical: 16),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.shade200,
+                                shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.check_circle, color: Colors.green, size: 20),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      'Đã đăng ký',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                  ],
+                                elevation: 0,
+                              ),
+                              child: const Text(
+                                'Check-in',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            // Check-in button
-                            Expanded(
-                              flex: 3,
-                              child: ElevatedButton(
-                                onPressed: _handleCheckIn,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF5669FF),
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                            const SizedBox(height: 12),
+                            // Hủy đăng ký button
+                            OutlinedButton(
+                              onPressed: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('Hủy đăng ký'),
+                                    content: const Text(
+                                        'Bạn có chắc chắn muốn hủy đăng ký sự kiện này?'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: const Text('Không'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () async {
+                                          Navigator.pop(context);
+                                          
+                                          setState(() => isRegistering = true);
+                                          
+                                          // Call API to unregister
+                                          final eventService = Provider.of<EventService>(context, listen: false);
+                                          final success = await eventService.unregisterFromEvent(widget.event.id);
+                                          
+                                          setState(() => isRegistering = false);
+                                          
+                                          if (success) {
+                                            setState(() => isRegistered = false);
+                                            
+                                            if (mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text('Đã hủy đăng ký thành công'),
+                                                  duration: Duration(seconds: 2),
+                                                  backgroundColor: Colors.green,
+                                                ),
+                                              );
+                                            }
+                                          } else {
+                                            if (mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text('Có lỗi xảy ra, vui lòng thử lại'),
+                                                  duration: Duration(seconds: 2),
+                                                  backgroundColor: Colors.red,
+                                                ),
+                                              );
+                                            }
+                                          }
+                                        },
+                                        child: const Text(
+                                          'Có',
+                                          style: TextStyle(color: Colors.red),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  elevation: 0,
+                                );
+                              },
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.red,
+                                side: const BorderSide(color: Colors.red),
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: const Text(
-                                  'Check-in',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                              ),
+                              child: const Text(
+                                'Hủy đăng ký',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),

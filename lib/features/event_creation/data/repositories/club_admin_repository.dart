@@ -1,6 +1,7 @@
 import 'package:event_connect/features/event_creation/data/api/club_admin_api.dart';
 import 'package:event_connect/features/event_management/domain/models/event.dart';
 import 'package:event_connect/models/notification.dart';
+import 'package:event_connect/features/event_creation/domain/models/event_cancellation_request.dart';
 
 /// ClubAdminRepository - Quản lý logic nghiệp vụ cho Club Admin
 class ClubAdminRepository {
@@ -158,6 +159,14 @@ class ClubAdminRepository {
     }
   }
   
+  /// Xóa sự kiện (chỉ cho phép xóa sự kiện chưa được phê duyệt)
+  Future<void> deleteEvent(String eventId) async {
+    final result = await api.deleteEvent(eventId);
+    if (result['status'] != 204 && result['status'] != 200) {
+      throw Exception(result['body']['detail'] ?? result['body']['error'] ?? 'Failed to delete event');
+    }
+  }
+  
   /// Tạo sự kiện mới cho CLB
   Future<Event> createEvent(String clubId, Map<String, dynamic> eventData) async {
     final result = await api.createEvent(clubId, eventData);
@@ -165,6 +174,60 @@ class ClubAdminRepository {
       return Event.fromJson(result['body'] as Map<String, dynamic>);
     } else {
       throw Exception(result['body']['detail'] ?? 'Failed to create event');
+    }
+  }
+  
+  /// Yêu cầu hủy sự kiện (chỉ cho sự kiện đã approved)
+  Future<EventCancellationRequest> requestCancellation({
+    required String eventId,
+    required String reason,
+    String? refundPolicy,
+    String? alternativeAction,
+  }) async {
+    final result = await api.requestCancellation(
+      eventId: eventId,
+      reason: reason,
+      refundPolicy: refundPolicy,
+      alternativeAction: alternativeAction,
+    );
+    
+    if (result['status'] == 201 || result['status'] == 200) {
+      return EventCancellationRequest.fromJson(result['body'] as Map<String, dynamic>);
+    } else {
+      // Extract error message
+      final body = result['body'];
+      String errorMsg = 'Failed to request cancellation';
+      
+      if (body is Map) {
+        if (body.containsKey('error')) {
+          errorMsg = body['error'].toString();
+        } else if (body.containsKey('detail')) {
+          errorMsg = body['detail'].toString();
+        } else if (body.containsKey('reason')) {
+          // Validation error for reason field
+          errorMsg = body['reason'].toString();
+        }
+      }
+      
+      throw Exception(errorMsg);
+    }
+  }
+  
+  /// Lấy danh sách yêu cầu hủy của sự kiện
+  Future<List<EventCancellationRequest>> getEventCancellationRequests(String eventId) async {
+    final result = await api.getEventCancellationRequests(eventId);
+    
+    if (result['status'] == 200) {
+      final body = result['body'];
+      if (body is Map && body.containsKey('results')) {
+        final results = body['results'] as List;
+        return results
+            .map((json) => EventCancellationRequest.fromJson(json as Map<String, dynamic>))
+            .toList();
+      }
+      throw Exception('Invalid response format');
+    } else {
+      throw Exception(result['body']['detail'] ?? 'Failed to fetch cancellation requests');
     }
   }
 }

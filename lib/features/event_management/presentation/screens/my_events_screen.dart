@@ -21,9 +21,10 @@ class _MyEventsScreenState extends State<MyEventsScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this); // 4 tabs now
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<EventService>().loadMyRegisteredEvents();
+      context.read<EventService>().loadSavedEvents(); // ✨ Load saved events
     });
   }
 
@@ -37,27 +38,45 @@ class _MyEventsScreenState extends State<MyEventsScreen>
   List<Event> getUpcomingEvents(EventService eventService) {
     final now = DateTime.now();
     return eventService.myRegisteredEvents
-        .where((event) => event.date.isAfter(now))
+        .where((event) {
+          // Sự kiện sắp tới: chưa bắt đầu (startAt > now)
+          return event.startAt.isAfter(now);
+        })
+        .toList();
+  }
+
+  List<Event> getOngoingEvents(EventService eventService) {
+    final now = DateTime.now();
+    return eventService.myRegisteredEvents
+        .where((event) {
+          // Sự kiện đang diễn ra: đã bắt đầu nhưng chưa kết thúc
+          // startAt <= now < endAt
+          final eventEndTime = event.endAt ?? event.startAt.add(const Duration(hours: 2)); // Default 2h nếu không có endAt
+          return event.startAt.isBefore(now) && eventEndTime.isAfter(now);
+        })
         .toList();
   }
 
   List<Event> getPastEvents(EventService eventService) {
     final now = DateTime.now();
     return eventService.myRegisteredEvents
-        .where((event) => event.date.isBefore(now))
+        .where((event) {
+          // Sự kiện đã qua: đã kết thúc (endAt < now)
+          final eventEndTime = event.endAt ?? event.startAt.add(const Duration(hours: 2)); // Default 2h nếu không có endAt
+          return eventEndTime.isBefore(now);
+        })
         .toList();
   }
 
   List<Event> getSavedEvents(EventService eventService) {
-    // TODO: Implement saved events feature
-    // For now, return empty list
-    return [];
+    return eventService.savedEvents;  // ✅ Get from service
   }
 
   @override
   Widget build(BuildContext context) {
     final eventService = context.watch<EventService>();
     final upcomingEvents = getUpcomingEvents(eventService);
+    final ongoingEvents = getOngoingEvents(eventService);
     final pastEvents = getPastEvents(eventService);
     final savedEvents = getSavedEvents(eventService);
     
@@ -79,6 +98,7 @@ class _MyEventsScreenState extends State<MyEventsScreen>
                   controller: _tabController,
                   children: [
                     _buildEventsList(upcomingEvents, isUpcoming: true),
+                    _buildEventsList(ongoingEvents, isUpcoming: true, isOngoing: true),
                     _buildEventsList(pastEvents, isUpcoming: false),
                     _buildEventsList(savedEvents, isUpcoming: true, isSaved: true),
                   ],
@@ -203,6 +223,7 @@ class _MyEventsScreenState extends State<MyEventsScreen>
               indicatorWeight: 3,
               tabs: const [
                 Tab(text: 'Sắp tới'),
+                Tab(text: 'Đang diễn ra'),
                 Tab(text: 'Đã qua'),
                 Tab(text: 'Đã lưu'),
               ],
@@ -227,7 +248,7 @@ class _MyEventsScreenState extends State<MyEventsScreen>
   }
 
   Widget _buildEventsList(List<Event> events,
-      {required bool isUpcoming, bool isSaved = false}) {
+      {required bool isUpcoming, bool isOngoing = false, bool isSaved = false}) {
     if (events.isEmpty) {
       return RefreshIndicator(
         onRefresh: () async {
@@ -282,6 +303,7 @@ class _MyEventsScreenState extends State<MyEventsScreen>
             child: MyEventCard(
               event: events[index],
               isUpcoming: isUpcoming,
+              isOngoing: isOngoing,
               isSaved: isSaved,
             ),
           );
@@ -294,12 +316,14 @@ class _MyEventsScreenState extends State<MyEventsScreen>
 class MyEventCard extends StatelessWidget {
   final Event event;
   final bool isUpcoming;
+  final bool isOngoing;
   final bool isSaved;
 
   const MyEventCard({
     super.key,
     required this.event,
     required this.isUpcoming,
+    this.isOngoing = false,
     this.isSaved = false,
   });
 
@@ -423,7 +447,8 @@ class MyEventCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (isUpcoming) ...[
+                // Only show Check-in/Cancel buttons for REGISTERED events, NOT saved events
+                if ((isUpcoming || isOngoing) && !isSaved) ...[
                   const SizedBox(height: 16),
                   const Divider(height: 1),
                   const SizedBox(height: 12),
@@ -458,43 +483,181 @@ class MyEventCard extends StatelessWidget {
                       Expanded(
                         child: TextButton.icon(
                           onPressed: () {
-                            // Handle cancel
+                            // Handle cancel registration with modern dialog
                             showDialog(
                               context: context,
                               builder: (context) => AlertDialog(
-                                title: const Text('Hủy sự kiện'),
-                                content: const Text(
-                                    'Bạn có chắc chắn muốn hủy tham gia sự kiện này?'),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: const Text('Không'),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                title: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.shade50,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        Icons.cancel_outlined,
+                                        color: Colors.red.shade400,
+                                        size: 24,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    const Text(
+                                      'Hủy đăng ký',
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                content: const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 8),
+                                  child: Text(
+                                    'Bạn có chắc chắn muốn hủy đăng ký sự kiện này không? Bạn có thể đăng ký lại sau.',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      color: Color(0xFF747688),
+                                      height: 1.5,
+                                    ),
                                   ),
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.pop(context);
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        const SnackBar(
-                                          content:
-                                              Text('Đã hủy tham gia sự kiện'),
-                                          duration: Duration(seconds: 2),
+                                ),
+                                actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+                                actions: [
+                                  // Không button (outlined)
+                                  Expanded(
+                                    child: OutlinedButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: const Color(0xFF5669FF),
+                                        side: const BorderSide(
+                                          color: Color(0xFF5669FF),
+                                          width: 1.5,
                                         ),
-                                      );
-                                    },
-                                    child: const Text('Có'),
+                                        padding: const EdgeInsets.symmetric(vertical: 14),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        'Không',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  // Có button (filled with gradient)
+                                  Expanded(
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            Colors.red.shade400,
+                                            Colors.red.shade600,
+                                          ],
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.red.withOpacity(0.3),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      child: ElevatedButton(
+                                        onPressed: () async {
+                                          Navigator.pop(context);
+                                          
+                                          // Call API to unregister
+                                          final eventService = context.read<EventService>();
+                                          final success = await eventService.unregisterFromEvent(event.id);
+                                          
+                                          if (success) {
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  content: Row(
+                                                    children: const [
+                                                      Icon(Icons.check_circle, color: Colors.white),
+                                                      SizedBox(width: 12),
+                                                      Text('Đã hủy đăng ký thành công'),
+                                                    ],
+                                                  ),
+                                                  duration: const Duration(seconds: 2),
+                                                  backgroundColor: Colors.green,
+                                                  behavior: SnackBarBehavior.floating,
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius: BorderRadius.circular(10),
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                          } else {
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  content: Row(
+                                                    children: const [
+                                                      Icon(Icons.error_outline, color: Colors.white),
+                                                      SizedBox(width: 12),
+                                                      Text('Có lỗi xảy ra, vui lòng thử lại'),
+                                                    ],
+                                                  ),
+                                                  duration: const Duration(seconds: 2),
+                                                  backgroundColor: Colors.red,
+                                                  behavior: SnackBarBehavior.floating,
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius: BorderRadius.circular(10),
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                          }
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.transparent,
+                                          foregroundColor: Colors.white,
+                                          shadowColor: Colors.transparent,
+                                          padding: const EdgeInsets.symmetric(vertical: 14),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'Hủy đăng ký',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
                             );
                           },
-                          icon: const Icon(
-                            Icons.close,
+                          icon: Icon(
+                            Icons.cancel_rounded,
                             size: 18,
+                            color: Colors.red.shade400,
                           ),
-                          label: const Text('Cancel'),
+                          label: Text(
+                            'Hủy',
+                            style: TextStyle(
+                              color: Colors.red.shade400,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                           style: TextButton.styleFrom(
-                            foregroundColor: Colors.grey.shade700,
+                            foregroundColor: Colors.red.shade400,
                           ),
                         ),
                       ),

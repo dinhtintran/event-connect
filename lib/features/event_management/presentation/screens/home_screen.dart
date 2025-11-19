@@ -41,7 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final eventService = context.watch<EventService>();
     final now = DateTime.now();
     return eventService.filteredEvents
-        .where((event) => event.date.isAfter(now) && !event.isFeatured)
+        .where((event) => event.startAt.isAfter(now) && !event.isFeatured)
         .toList();
   }
 

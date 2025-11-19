@@ -27,6 +27,10 @@ class Event {
   final int attendedCount;      // Đã hoàn thành tham dự
   final int totalParticipants;  // Tổng số người (trừ cancelled)
   
+  // NEW: Saved events feature
+  final bool isSaved;           // Người dùng đã lưu sự kiện này chưa
+  final DateTime? savedAt;      // Thời điểm lưu
+  
   final String? status;
   final String riskLevel;
   final DateTime? createdAt;
@@ -57,6 +61,10 @@ class Event {
     this.attendedCount = 0,
     this.totalParticipants = 0,
     
+    // NEW: Saved events (with defaults)
+    this.isSaved = false,
+    this.savedAt,
+    
   this.status,
   this.riskLevel = '',
     this.createdAt,
@@ -79,9 +87,9 @@ class Event {
   
   /// Check if event has ended
   bool get hasEnded {
-    final end = endAt;
-    if (end == null) return false;
-    return DateTime.now().isAfter(end);
+    final now = DateTime.now();
+    final end = endAt ?? startAt.add(const Duration(hours: 2)); // Default 2h duration
+    return now.isAfter(end);
   }
   
   /// Get smart participant display text based on event status
@@ -99,7 +107,7 @@ class Event {
     // Event is live and has checked-in people
     if (isLive && checkedInCount > 0) {
       if (registrationCount > 0) {
-        return '$checkedInCount đã đến / ${activeParticipants} đã đăng ký';
+        return '$checkedInCount đã đến / $activeParticipants đã đăng ký';
       }
       return '$checkedInCount đã đến';
     }
@@ -194,6 +202,10 @@ class Event {
       attendedCount: parseInt(json['attended_count']),
       totalParticipants: parseInt(json['total_participants']),
       
+      // NEW: Saved events feature
+      isSaved: json['is_saved'] as bool? ?? false,
+      savedAt: parseDate(json['saved_at']),
+      
       status: json['status'] as String?,
       riskLevel: '', // Not in API response
       createdAt: parseDate(json['created_at']),
@@ -220,6 +232,8 @@ class Event {
       'poster_url': posterUrl,
       'capacity': capacity,
       'participantCount': participantCount,
+      'is_saved': isSaved,
+      'saved_at': savedAt?.toIso8601String(),
       'status': status,
       'riskLevel': riskLevel,
       'createdAt': createdAt?.toIso8601String(),

@@ -7,6 +7,7 @@ import 'package:event_connect/features/event_creation/presentation/screens/edit_
 import 'package:event_connect/features/event_creation/presentation/screens/event_participants_screen.dart';
 import 'package:event_connect/core/widgets/app_nav_bar.dart';
 import 'package:event_connect/features/event_creation/presentation/widgets/club_event_card.dart';
+import 'package:event_connect/features/event_creation/presentation/widgets/request_cancellation_dialog.dart';
 import 'package:event_connect/features/event_creation/data/repositories/club_admin_repository.dart';
 import 'package:event_connect/features/event_creation/data/api/club_admin_api.dart';
 import 'package:event_connect/features/event_management/domain/models/event.dart';
@@ -237,6 +238,141 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
         builder: (context) => EventParticipantsScreen(event: event),
       ),
     );
+  }
+  
+  void _showDeleteConfirmation(Event event) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Xác nhận xóa'),
+        content: Text('Bạn có chắc chắn muốn xóa sự kiện "${event.title}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteEvent(event);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Xóa', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Future<void> _deleteEvent(Event event) async {
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+    
+    try {
+      await _repository.deleteEvent(event.id.toString());
+      
+      // Close loading dialog
+      if (mounted) Navigator.pop(context);
+      
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đã xóa sự kiện thành công'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+      
+      // Reload events
+      _loadEvents();
+    } catch (e) {
+      // Close loading dialog
+      if (mounted) Navigator.pop(context);
+      
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi khi xóa sự kiện: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+  
+  Future<void> _showRequestCancellationDialog(Event event) async {
+    // Import dialog
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => RequestCancellationDialog(
+        eventTitle: event.title,
+      ),
+    );
+    
+    if (result != null) {
+      _requestCancellation(event, result);
+    }
+  }
+  
+  Future<void> _requestCancellation(Event event, Map<String, dynamic> data) async {
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+    
+    try {
+      await _repository.requestCancellation(
+        eventId: event.id.toString(),
+        reason: data['reason'] as String,
+        refundPolicy: data['refund_policy'] as String?,
+        alternativeAction: data['alternative_action'] as String?,
+      );
+      
+      // Close loading dialog
+      if (mounted) Navigator.pop(context);
+      
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đã gửi yêu cầu hủy sự kiện đến System Admin'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      
+      // Reload events to update status
+      _loadEvents();
+    } catch (e) {
+      // Close loading dialog
+      if (mounted) Navigator.pop(context);
+      
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    }
   }
   
   void _navigateToEventDetail(Event event) {
@@ -505,6 +641,7 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
                   buildFilterChip('Bản nháp', 'draft', _selectedStatus == 'draft'),
                   buildFilterChip('Chờ duyệt', 'pending', _selectedStatus == 'pending'),
                   buildFilterChip('Đã duyệt', 'approved', _selectedStatus == 'approved'),
+                  buildFilterChip('Bị từ chối', 'rejected', _selectedStatus == 'rejected'),
                   buildFilterChip('Đã kết thúc', 'completed', _selectedStatus == 'completed'),
                 ],
               ),
@@ -612,21 +749,37 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
                 ),
               )
             else
-              ..._events.map((event) => Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: ClubEventCard(
-                  status: _getStatusText(event),
-                  statusColor: _getStatusColor(event),
-                  title: event.title,
-                  date: _formatDate(event.startAt),
-                  location: event.location,
-                  organizer: event.clubName,
-                  image: event.posterUrl,
-                  onEdit: () => _navigateToEditEvent(event),
-                  onViewParticipants: () => _navigateToParticipants(event),
-                  onTap: () => _navigateToEventDetail(event),
-                ),
-              )).toList(),
+              ..._events.map((event) {
+                // Chỉ cho phép xóa sự kiện chưa được phê duyệt
+                final canDelete = event.status != 'approved';
+                
+                // Chỉ cho phép yêu cầu hủy sự kiện đã approved và chưa kết thúc
+                final now = DateTime.now();
+                final canRequestCancellation = event.status == 'approved' && 
+                    (event.endAt == null || event.endAt!.isAfter(now));
+                
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: ClubEventCard(
+                    status: _getStatusText(event),
+                    statusColor: _getStatusColor(event),
+                    title: event.title,
+                    date: _formatDate(event.startAt),
+                    location: event.location,
+                    organizer: event.clubName,
+                    image: event.posterUrl,
+                    canDelete: canDelete,
+                    canRequestCancellation: canRequestCancellation,
+                    onEdit: () => _navigateToEditEvent(event),
+                    onViewParticipants: () => _navigateToParticipants(event),
+                    onDelete: canDelete ? () => _showDeleteConfirmation(event) : null,
+                    onRequestCancellation: canRequestCancellation 
+                        ? () => _showRequestCancellationDialog(event) 
+                        : null,
+                    onTap: () => _navigateToEventDetail(event),
+                  ),
+                );
+              }).toList(),
             const SizedBox(height: 28),
 
             // ➕ Nút tạo sự kiện

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:event_connect/features/event_management/domain/models/event.dart';
+import 'package:event_connect/features/event_approval/domain/models/event_approval.dart';
 import 'package:event_connect/features/event_approval/presentation/widgets/approval_event_card.dart';
 import 'package:event_connect/features/event_approval/presentation/widgets/approval_dialog.dart';
 import 'package:event_connect/features/authentication/domain/services/auth_service.dart';
-import 'package:event_connect/features/admin_dashboard/domain/services/admin_service.dart';
+import 'package:event_connect/features/admin/domain/services/admin_service.dart';
 import 'package:event_connect/core/widgets/app_nav_bar.dart';
 import 'package:event_connect/app_routes.dart';
 
@@ -16,9 +17,9 @@ class ApprovalScreen extends StatefulWidget {
 }
 
 class _ApprovalScreenState extends State<ApprovalScreen> {
-  int _selectedIndex = 1; // Approval tab is selected
+  int _selectedIndex = 2; // Event Management tab is selected (NEW: index changed from 1 to 2)
   bool _isLoading = true;
-  List<Event> _pendingEvents = [];
+  List<EventApproval> _pendingApprovals = [];
 
   @override
   void initState() {
@@ -35,8 +36,8 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
     if (response['status'] == 200 && mounted) {
       final results = response['body']['results'] as List<dynamic>;
       setState(() {
-        _pendingEvents = results
-            .map((json) => Event.fromJson(json['event'] as Map<String, dynamic>))
+        _pendingApprovals = results
+            .map((json) => EventApproval.fromJson(json as Map<String, dynamic>))
             .toList();
         _isLoading = false;
       });
@@ -122,11 +123,11 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
     );
   }
 
-  void _handleApprove(Event event) {
+  void _handleApprove(EventApproval approval) {
     showDialog(
       context: context,
       builder: (context) => ApprovalDialog(
-        event: event,
+        event: approval.event,
         onApprove: (locationVerified, timeVerified, descriptionVerified, note) async {
           Navigator.pop(context); // Close dialog first
           
@@ -152,12 +153,12 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
           );
           
           final adminService = Provider.of<AdminService>(context, listen: false);
-          final success = await adminService.approveEvent(event.id, comments: note);
+          final success = await adminService.approveEvent(approval.id.toString(), comment: note);
           
           if (success && mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Đã phê duyệt sự kiện "${event.title}"'),
+                content: Text('Đã phê duyệt sự kiện "${approval.event.title}"'),
                 backgroundColor: Colors.green,
                 behavior: SnackBarBehavior.floating,
               ),
@@ -179,7 +180,7 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
     );
   }
 
-  void _handleReject(Event event) {
+  void _handleReject(EventApproval approval) {
     final reasonController = TextEditingController();
     
     showDialog(
@@ -193,7 +194,7 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Bạn có chắc chắn muốn từ chối sự kiện "${event.title}"?'),
+            Text('Bạn có chắc chắn muốn từ chối sự kiện "${approval.event.title}"?'),
             const SizedBox(height: 16),
             TextField(
               controller: reasonController,
@@ -253,12 +254,12 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
               );
               
               final adminService = Provider.of<AdminService>(context, listen: false);
-              final success = await adminService.rejectEvent(event.id, reason: reason);
+              final success = await adminService.rejectEvent(approval.id.toString(), reason: reason);
               
               if (success && mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Đã từ chối sự kiện "${event.title}"'),
+                    content: Text('Đã từ chối sự kiện "${approval.event.title}"'),
                     backgroundColor: Colors.red,
                     behavior: SnackBarBehavior.floating,
                   ),
@@ -290,16 +291,25 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
     setState(() {
       _selectedIndex = index;
     });
-    // Navigate based on index
+    // Navigate based on index (NEW: 5 tabs)
     // 0 -> Admin Dashboard
-    // 1 -> Approval (current screen)
-    // 2 -> Reports
-    // 3 -> Profile
+    // 1 -> User Management
+    // 2 -> Event Management (replacing old Approval)
+    // 3 -> Reports
+    // 4 -> Profile
     if (index == 0) {
       Navigator.of(context).pushReplacementNamed(AppRoutes.admin);
       return;
     }
-    if (index == 3) {
+    if (index == 1) {
+      Navigator.of(context).pushNamed('/admin/users');
+      return;
+    }
+    if (index == 2) {
+      Navigator.of(context).pushNamed('/admin/events');
+      return;
+    }
+    if (index == 4) {
       Navigator.of(context).pushNamed(AppRoutes.profile);
       return;
     }
@@ -380,7 +390,7 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _pendingEvents.isEmpty
+          : _pendingApprovals.isEmpty
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -403,14 +413,14 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
             )
           : ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: _pendingEvents.length,
+              itemCount: _pendingApprovals.length,
               itemBuilder: (context, index) {
-                final event = _pendingEvents[index];
+                final approval = _pendingApprovals[index];
                 return ApprovalEventCard(
-                  event: event,
-                  onViewDetails: () => _handleViewDetails(event),
-                  onApprove: () => _handleApprove(event),
-                  onReject: () => _handleReject(event),
+                  event: approval.event,
+                  onViewDetails: () => _handleViewDetails(approval.event),
+                  onApprove: () => _handleApprove(approval),
+                  onReject: () => _handleReject(approval),
                 );
               },
             ),

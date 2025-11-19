@@ -6,7 +6,8 @@ class AppRoutes {
   static const String home = '/home';
   static const String clubHome = '/club-home';
   static const String clubEvents = '/club-events';
-  static const String approval = '/approval';
+  static const String approval = '/approval'; // Deprecated: use eventManagement
+  static const String eventManagement = '/event-management';
   static const String admin = '/admin';
   static const String profile = '/profile';
   static const String notifications = '/notifications';
