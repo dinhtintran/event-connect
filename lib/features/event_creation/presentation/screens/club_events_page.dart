@@ -527,13 +527,19 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
     // Navigation based on index:
     // 0 -> Trang Chủ
     // 1 -> Sự kiện (current page)
-    // 2 -> Thư
-    // 3 -> Thống Kê
+    // 2 -> Thư (Báo cáo sự kiện - tổng quan)
+    // 3 -> Thống Kê (Thống kê chi tiết)
     // 4 -> Hồ Sơ
 
     if (index == 0) {
       // Go back to Club Home Page
       Navigator.push(context, _createSlideBackRoute(const ClubHomePage()));
+    } else if (index == 2) {
+      // Navigate to Statistics/Report page (overview)
+      Navigator.pushNamed(context, AppRoutes.clubStatistics);
+    } else if (index == 3) {
+      // Navigate to Statistics Detail page
+      Navigator.pushNamed(context, AppRoutes.clubStatisticsDetail);
     } else if (index == 4) {
       // Navigate to Profile
       Navigator.pushNamed(context, AppRoutes.profile);

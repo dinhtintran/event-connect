@@ -229,8 +229,8 @@ class _ClubHomePageState extends State<ClubHomePage> {
     // Navigation based on index:
     // 0 -> Trang Chủ (stay here)
     // 1 -> Sự kiện
-    // 2 -> Thư (not implemented)
-    // 3 -> Thống Kê (not implemented)
+    // 2 -> Thư (Báo cáo sự kiện - tổng quan)
+    // 3 -> Thống Kê (Thống kê chi tiết)
     // 4 -> Hồ Sơ
 
     if (index == 1) {
@@ -240,6 +240,28 @@ class _ClubHomePageState extends State<ClubHomePage> {
         Navigator.pushNamed(context, AppRoutes.clubEvents);
       } catch (e, st) {
         debugPrint('Failed to navigate to ClubEventsPage (named): $e\n$st');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi khi chuyển trang: ${e.toString()}')));
+        }
+      }
+    } else if (index == 2) {
+      // Navigate to Statistics/Report page (overview)
+      debugPrint('ClubHomePage: tapping Thư tab -> navigate to ClubStatisticsScreen');
+      try {
+        Navigator.pushNamed(context, AppRoutes.clubStatistics);
+      } catch (e, st) {
+        debugPrint('Failed to navigate to ClubStatisticsScreen: $e\n$st');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi khi chuyển trang: ${e.toString()}')));
+        }
+      }
+    } else if (index == 3) {
+      // Navigate to Statistics Detail page
+      debugPrint('ClubHomePage: tapping Thống Kê tab -> navigate to ClubStatisticsDetailScreen');
+      try {
+        Navigator.pushNamed(context, AppRoutes.clubStatisticsDetail);
+      } catch (e, st) {
+        debugPrint('Failed to navigate to ClubStatisticsDetailScreen: $e\n$st');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi khi chuyển trang: ${e.toString()}')));
         }
@@ -575,7 +597,7 @@ class _ClubHomePageState extends State<ClubHomePage> {
           BottomNavigationBarItem(
               icon: Icon(Icons.event), label: 'Sự Kiện'),
           BottomNavigationBarItem(
-              icon: Icon(Icons.mail_outline), label: 'Thư'),
+              icon: Icon(Icons.description_outlined), label: 'Báo cáo'),
           BottomNavigationBarItem(
               icon: Icon(Icons.bar_chart_outlined), label: 'Thống Kê'),
           BottomNavigationBarItem(

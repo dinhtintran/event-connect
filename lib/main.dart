@@ -100,6 +100,8 @@ class EventConnectApp extends StatelessWidget {
           AppRoutes.home: (_) => const MainScreen(),
           AppRoutes.clubHome: (_) => const ClubHomePage(),
           AppRoutes.clubEvents: (_) => const ClubEventsPage(),
+          AppRoutes.clubStatistics: (_) => const ClubStatisticsScreen(),
+          AppRoutes.clubStatisticsDetail: (_) => const ClubStatisticsDetailScreen(),
           AppRoutes.approval: (_) => const ApprovalScreen(), // Deprecated: kept for backward compatibility
           AppRoutes.eventManagement: (_) => const EventManagementScreen(),
           AppRoutes.admin: (_) => const AdminHomeScreen(),

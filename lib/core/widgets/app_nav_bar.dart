@@ -36,7 +36,7 @@ class AppNavBar extends StatelessWidget {
       items = const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Trang Chủ'),
         BottomNavigationBarItem(icon: Icon(Icons.event), label: 'Sự Kiện'),
-        BottomNavigationBarItem(icon: Icon(Icons.mail_outline), label: 'Thư'),
+        BottomNavigationBarItem(icon: Icon(Icons.description_outlined), label: 'Báo cáo'),
         BottomNavigationBarItem(icon: Icon(Icons.bar_chart_outlined), label: 'Thống Kê'),
         BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Hồ Sơ'),
       ];

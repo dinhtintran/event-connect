@@ -11,5 +11,7 @@ class AppRoutes {
   static const String admin = '/admin';
   static const String profile = '/profile';
   static const String notifications = '/notifications';
+  static const String clubStatistics = '/club-statistics';
+  static const String clubStatisticsDetail = '/club-statistics-detail';
 }
 
