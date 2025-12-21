@@ -1,0 +1,101 @@
+name: CI Testing
+
+on:
+  push:
+    branches: [ main, develop, feature/* ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  frontend-test:
+    name: Flutter Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.9.2'
+          channel: 'stable'
+      
+      - name: Get dependencies
+        run: flutter pub get
+      
+      - name: Run analyzer
+        run: flutter analyze
+      
+      - name: Run Flutter tests
+        run: flutter test test/frontend_test_suite.dart
+  
+  backend-test:
+    name: Django Tests
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        python-version: ['3.12']
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: test_event_connect
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+        ports:
+          - 3306:3306
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      
+      - name: Install dependencies
+        working-directory: ./event_connect_backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Run migrations
+        working-directory: ./event_connect_backend
+        run: python manage.py migrate
+      
+      - name: Run tests
+        working-directory: ./event_connect_backend
+        run: python manage.py test --no-migrate
+      
+      - name: Check code quality (pylint)
+        working-directory: ./event_connect_backend
+        run: |
+          pip install pylint
+          pylint accounts clubs event_management notifications --disable=C,W,R --exit-zero || true
+  
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.9.2'
+      
+      - name: Get Flutter dependencies
+        run: flutter pub get
+      
+      - name: Run Flutter linter
+        run: flutter analyze
+      
+      - name: Check Flutter formatting
+        run: flutter format --set-exit-if-changed --dry-run lib test
