@@ -10,7 +10,7 @@ class AdminApi {
 
   // ==================== USER MANAGEMENT ====================
 
-  /// GET /api/accounts/admin/users/ - Get all users
+  /// GET /api/notifications/admin/users/ - Get all users
   Future<Map<String, dynamic>> getAllUsers({
     int page = 1,
     String? search,
@@ -18,7 +18,7 @@ class AdminApi {
     String? faculty,
     bool? isActive,
   }) async {
-    _dbg('GET /api/accounts/admin/users/');
+    _dbg('GET /api/notifications/admin/users/');
     try {
       final queryParams = <String, dynamic>{
         'page': page,
@@ -28,7 +28,7 @@ class AdminApi {
         if (isActive != null) 'is_active': isActive,
       };
       
-      final res = await dio.get('/api/accounts/admin/users/', queryParameters: queryParams);
+      final res = await dio.get('/api/notifications/admin/users/', queryParameters: queryParams);
       _dbg('response ${res.statusCode} ${res.requestOptions.uri}');
       return {'status': res.statusCode, 'body': res.data};
     } on DioException catch (e) {
@@ -125,7 +125,7 @@ class AdminApi {
 
   // ==================== EVENT MANAGEMENT ====================
 
-  /// GET /api/admin/events/ - Get all events (including pending)
+  /// GET /api/event_management/events/ - Get all events (including pending)
   Future<Map<String, dynamic>> getAllEvents({
     int page = 1,
     String? search,
@@ -134,7 +134,7 @@ class AdminApi {
     DateTime? startDate,
     DateTime? endDate,
   }) async {
-    _dbg('GET /api/admin/events/');
+    _dbg('GET /api/event_management/events/');
     try {
       final queryParams = <String, dynamic>{
         'page': page,
@@ -145,7 +145,7 @@ class AdminApi {
         if (endDate != null) 'end_date': endDate.toIso8601String(),
       };
       
-      final res = await dio.get('/api/admin/events/', queryParameters: queryParams);
+      final res = await dio.get('/api/event_management/events/', queryParameters: queryParams);
       _dbg('response ${res.statusCode} ${res.requestOptions.uri}');
       return {'status': res.statusCode, 'body': res.data};
     } on DioException catch (e) {

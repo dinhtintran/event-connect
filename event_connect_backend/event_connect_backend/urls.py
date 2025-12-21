@@ -18,8 +18,31 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import JsonResponse
+
+def api_home(request):
+    """Root API endpoint showing available endpoints"""
+    return JsonResponse({
+        'message': 'Welcome to Event Connect API',
+        'version': '1.0.0',
+        'endpoints': {
+            'admin': '/admin/',
+            'accounts': {
+                'register': '/api/accounts/register/',
+                'login': '/api/accounts/token/',
+                'refresh_token': '/api/accounts/token/refresh/',
+                'logout': '/api/accounts/logout/',
+                'profile': '/api/accounts/me/',
+            },
+            'clubs': '/api/clubs/',
+            'events': '/api/event_management/',
+            'notifications': '/api/notifications/',
+        },
+        'status': 'running'
+    })
 
 urlpatterns = [
+    path('', api_home, name='api_home'),
     path('admin/', admin.site.urls),
     
     # API endpoints
