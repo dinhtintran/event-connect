@@ -317,7 +317,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               IconButton(
                 icon: const Icon(Icons.notifications_outlined, color: Colors.black),
                 onPressed: () {
-                  // TODO: Navigate to notifications
+                  Navigator.pushNamed(context, AppRoutes.notifications);
                 },
               ),
             ],

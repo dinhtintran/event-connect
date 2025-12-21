@@ -282,7 +282,9 @@ class _ClubHomePageState extends State<ClubHomePage> {
             children: [
               IconButton(
                 icon: const Icon(Icons.notifications_none, color: Colors.black54),
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.pushNamed(context, AppRoutes.notifications);
+                },
               ),
               if (_unreadCount > 0)
                 Positioned(

@@ -12,15 +12,15 @@ class NotificationApi {
     print('[NotificationApi] $s');
   }
 
-  /// GET /api/notifications/ - Lấy danh sách thông báo
+  /// GET /api/notifications/notifications/ - Lấy danh sách thông báo
   Future<Map<String, dynamic>> getNotifications({bool? isRead}) async {
-    _dbg('GET /api/notifications/');
+    _dbg('GET /api/notifications/notifications/');
     try {
       final queryParams = <String, dynamic>{};
       if (isRead != null) {
         queryParams['is_read'] = isRead;
       }
-      final res = await dio.get('/api/notifications/', queryParameters: queryParams);
+      final res = await dio.get('/api/notifications/notifications/', queryParameters: queryParams);
       _dbg('response ${res.statusCode} ${res.requestOptions.uri}');
       return {'status': res.statusCode, 'body': res.data};
     } on DioException catch (e) {
@@ -32,11 +32,11 @@ class NotificationApi {
     }
   }
 
-  /// POST /api/notifications/{id}/read/ - Đánh dấu thông báo đã đọc
+  /// POST /api/notifications/notifications/{id}/read/ - Đánh dấu thông báo đã đọc
   Future<Map<String, dynamic>> markAsRead(String id) async {
-    _dbg('POST /api/notifications/$id/read/');
+    _dbg('POST /api/notifications/notifications/$id/read/');
     try {
-      final res = await dio.post('/api/notifications/$id/read/');
+      final res = await dio.post('/api/notifications/notifications/$id/read/');
       _dbg('response ${res.statusCode} ${res.requestOptions.uri}');
       return {'status': res.statusCode, 'body': res.data};
     } on DioException catch (e) {
@@ -48,11 +48,11 @@ class NotificationApi {
     }
   }
 
-  /// GET /api/notifications/unread-count/ - Lấy số thông báo chưa đọc
+  /// GET /api/notifications/notifications/unread_count/ - Lấy số thông báo chưa đọc
   Future<Map<String, dynamic>> getUnreadCount() async {
-    _dbg('GET /api/notifications/unread-count/');
+    _dbg('GET /api/notifications/notifications/unread_count/');
     try {
-      final res = await dio.get('/api/notifications/unread-count/');
+      final res = await dio.get('/api/notifications/notifications/unread_count/');
       _dbg('response ${res.statusCode} ${res.requestOptions.uri}');
       return {'status': res.statusCode, 'body': res.data};
     } on DioException catch (e) {
@@ -64,11 +64,11 @@ class NotificationApi {
     }
   }
 
-  /// POST /api/notifications/mark-all-read/ - Đánh dấu tất cả thông báo đã đọc
+  /// POST /api/notifications/notifications/mark_all_read/ - Đánh dấu tất cả thông báo đã đọc
   Future<Map<String, dynamic>> markAllAsRead() async {
-    _dbg('POST /api/notifications/mark-all-read/');
+    _dbg('POST /api/notifications/notifications/mark_all_read/');
     try {
-      final res = await dio.post('/api/notifications/mark-all-read/');
+      final res = await dio.post('/api/notifications/notifications/mark_all_read/');
       _dbg('response ${res.statusCode} ${res.requestOptions.uri}');
       return {'status': res.statusCode, 'body': res.data};
     } on DioException catch (e) {
