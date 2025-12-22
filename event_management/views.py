@@ -173,15 +173,12 @@ class EventViewSet(viewsets.ModelViewSet):
         
         # Note: registration_count is auto-calculated via @property, no need to update manually
         
-        # Create notification
-        from notifications.models import Notification
-        Notification.objects.create(
-            user=user,
-            type='registration_confirmed',
-            title='Đăng ký thành công',
-            message=f'Bạn đã đăng ký thành công cho sự kiện "{event.title}"',
-            event=event
-        )
+        # Send notification(s)
+        from notifications.services import NotificationService
+        NotificationService.notify_registration_confirmed(user, event)
+        NotificationService.notify_new_registration(event, user)
+        if event.is_full:
+            NotificationService.notify_event_full(event)
         
         return Response({
             'id': registration.id,
@@ -266,6 +263,9 @@ class EventViewSet(viewsets.ModelViewSet):
         event.average_rating = ratings['avg_rating'] or 0
         event.rating_count = ratings['count']
         event.save(update_fields=['average_rating', 'rating_count'])
+
+        from notifications.services import NotificationService
+        NotificationService.notify_feedback_received(event, user)
         
         return Response({
             'id': feedback.id,
@@ -827,15 +827,9 @@ class EventApprovalViewSet(viewsets.ReadOnlyModelViewSet):
         event.approved_at = timezone.now()
         event.save(update_fields=['status', 'approved_at'])
         
-        # Create notification
-        from notifications.models import Notification
-        Notification.objects.create(
-            user=event.created_by,
-            type='event_approved',
-            title='Sự kiện được phê duyệt',
-            message=f'Sự kiện "{event.title}" đã được phê duyệt',
-            event=event
-        )
+        from notifications.services import NotificationService
+        NotificationService.notify_event_approval_status(event, 'approved', request.user, approval.comment)
+        NotificationService.notify_event_approved_to_followers(event)
         
         return Response({
             'message': 'Event approved successfully',
@@ -868,15 +862,8 @@ class EventApprovalViewSet(viewsets.ReadOnlyModelViewSet):
         event.status = 'rejected'
         event.save(update_fields=['status'])
         
-        # Create notification
-        from notifications.models import Notification
-        Notification.objects.create(
-            user=event.created_by,
-            type='event_rejected',
-            title='Sự kiện bị từ chối',
-            message=f'Sự kiện "{event.title}" đã bị từ chối. Lý do: {approval.comment}',
-            event=event
-        )
+        from notifications.services import NotificationService
+        NotificationService.notify_event_approval_status(event, 'rejected', request.user, approval.comment)
         
         return Response({
             'message': 'Event rejected',

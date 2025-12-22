@@ -111,13 +111,14 @@ class ClubViewSet(viewsets.ModelViewSet):
         )
         
         # Create approval record if needed
+        from notifications.services import NotificationService
         if requires_approval:
             from event_management.models import EventApproval
             EventApproval.objects.create(event=event)
+            NotificationService.notify_new_event_pending(event)
         
-        # Log activity
-        from notifications.models import ActivityLog
-        ActivityLog.objects.create(
+        # Log activity for auditing
+        NotificationService.log_activity(
             user=request.user,
             action='event_created',
             description=f'Created event: {event.title}',
