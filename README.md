@@ -1,3 +1,9 @@
+git checkout backend
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python manage.py runserver
+
 # EventConnect 📱
 
 **EventConnect** is a modern mobile application built with Flutter that helps users discover, create, and manage events seamlessly. Whether you're organizing a conference, meetup, concert, or social gathering, EventConnect provides the tools to connect people and create memorable experiences.
@@ -39,26 +45,26 @@ Before running this project, make sure you have the following installed:
 
 4. **Run the application**
 
-   - For Android/iOS:
-     ```bash
-     flutter run
-     ```
+    - For Android/iOS:
+      ```bash
+      flutter run
+      ```
 
-   - For a specific device:
-     ```bash
-     flutter devices
-     flutter run -d <device_id>
-     ```
+    - For a specific device:
+      ```bash
+      flutter devices
+      flutter run -d <device_id>
+      ```
 
-   - For web:
-     ```bash
-     flutter run -d chrome
-     ```
+    - For web:
+      ```bash
+      flutter run -d chrome
+      ```
 
-   - For Windows:
-     ```bash
-     flutter run -d windows
-     ```
+    - For Windows:
+      ```bash
+      flutter run -d windows
+      ```
 
 ### Building for Production
 
@@ -102,10 +108,10 @@ event_connect/
 
 - **Framework**: Flutter 3.9.2
 - **Language**: Dart 3.9.2
-- **State Management**: 
-- **Backend**: 
-- **Database**: 
-- **Authentication**: 
+- **State Management**:
+- **Backend**:
+- **Database**:
+- **Authentication**:
 
 ## 📊 Development Timeline (5 Weeks)
 
@@ -126,10 +132,10 @@ event_connect/
 ## 📝 Weekly Reports
 
 ### Week 1 Report (Oct 8 - Oct 13)
-- **Achievements**: 
-  - Project initialized with Flutter
-  - Repository created and team access granted
-  - Initial README documentation completed
+- **Achievements**:
+    - Project initialized with Flutter
+    - Repository created and team access granted
+    - Initial README documentation completed
 - **Challenges**: TBD
 - **Next Steps**: Complete UI/UX design and finalize architecture
 

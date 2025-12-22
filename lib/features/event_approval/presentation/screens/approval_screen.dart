@@ -1,0 +1,435 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:event_connect/features/event_management/domain/models/event.dart';
+import 'package:event_connect/features/event_approval/domain/models/event_approval.dart';
+import 'package:event_connect/features/event_approval/presentation/widgets/approval_event_card.dart';
+import 'package:event_connect/features/event_approval/presentation/widgets/approval_dialog.dart';
+import 'package:event_connect/features/authentication/domain/services/auth_service.dart';
+import 'package:event_connect/features/admin/domain/services/admin_service.dart';
+import 'package:event_connect/core/widgets/app_nav_bar.dart';
+import 'package:event_connect/app_routes.dart';
+
+class ApprovalScreen extends StatefulWidget {
+  const ApprovalScreen({super.key});
+
+  @override
+  State<ApprovalScreen> createState() => _ApprovalScreenState();
+}
+
+class _ApprovalScreenState extends State<ApprovalScreen> {
+  int _selectedIndex = 2; // Event Management tab is selected (NEW: index changed from 1 to 2)
+  bool _isLoading = true;
+  List<EventApproval> _pendingApprovals = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPendingEvents();
+  }
+
+  Future<void> _loadPendingEvents() async {
+    setState(() => _isLoading = true);
+    
+    final adminService = Provider.of<AdminService>(context, listen: false);
+    final response = await adminService.fetchPendingApprovals();
+    
+    if (response['status'] == 200 && mounted) {
+      final results = response['body']['results'] as List<dynamic>;
+      setState(() {
+        _pendingApprovals = results
+            .map((json) => EventApproval.fromJson(json as Map<String, dynamic>))
+            .toList();
+        _isLoading = false;
+      });
+    } else if (mounted) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Không thể tải danh sách sự kiện. Vui lòng thử lại.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Removed sample data - now using real data from API
+  /*final List<Event> _pendingEvents = [
+    Event(
+      id: '1',
+      title: 'Hội thảo AI: Tương lai công nghệ',
+      clubName: 'CLB Công nghệ',
+      clubId: '1',
+      description: 'Hội thảo về tương lai của trí tuệ nhân tạo và công nghệ',
+      location: 'Phòng hội nghị A',
+      locationDetail: 'Trung tâm triển lãm',
+      startAt: DateTime(2024, 7, 20, 15, 0),
+      endAt: DateTime(2024, 7, 20, 18, 0),
+      posterUrl: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800',
+      capacity: 200,
+      participantCount: 150,
+      status: 'pending',
+      riskLevel: 'Thấp',
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    ),
+    Event(
+      id: '2',
+      title: 'Workshop tư duy thiết kế',
+      clubName: 'Học viện Thiết kế',
+      clubId: '2',
+      description: 'Workshop về design thinking và UX/UI',
+      location: 'Phòng thí nghiệm',
+      locationDetail: 'Sáng tạo',
+      startAt: DateTime(2024, 9, 5, 14, 0),
+      endAt: DateTime(2024, 9, 5, 17, 0),
+      posterUrl: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=800',
+      capacity: 100,
+      participantCount: 80,
+      status: 'pending',
+      riskLevel: 'Thấp',
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    ),
+  ];*/
+
+  void _handleViewDetails(Event event) {
+    // TODO: Navigate to event details page
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Chi tiết sự kiện'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Tên: ${event.title}'),
+              const SizedBox(height: 8),
+              Text('CLB: ${event.clubName}'),
+              const SizedBox(height: 8),
+              Text('Mô tả: ${event.description}'),
+              const SizedBox(height: 8),
+              Text('Sức chứa: ${event.capacity} người'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Đóng'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleApprove(EventApproval approval) {
+    showDialog(
+      context: context,
+      builder: (context) => ApprovalDialog(
+        event: approval.event,
+        onApprove: (locationVerified, timeVerified, descriptionVerified, note) async {
+          Navigator.pop(context); // Close dialog first
+          
+          // Show loading
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Row(
+                children: [
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                  SizedBox(width: 16),
+                  Text('Đang phê duyệt...'),
+                ],
+              ),
+              duration: Duration(seconds: 2),
+            ),
+          );
+          
+          final adminService = Provider.of<AdminService>(context, listen: false);
+          final success = await adminService.approveEvent(approval.id.toString(), comment: note);
+          
+          if (success && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Đã phê duyệt sự kiện "${approval.event.title}"'),
+                backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+            
+            // Reload pending events
+            _loadPendingEvents();
+          } else if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Không thể phê duyệt sự kiện. Vui lòng thử lại.'),
+                backgroundColor: Colors.red,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        },
+      ),
+    );
+  }
+
+  void _handleReject(EventApproval approval) {
+    final reasonController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text('Từ chối sự kiện'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Bạn có chắc chắn muốn từ chối sự kiện "${approval.event.title}"?'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: InputDecoration(
+                labelText: 'Lý do từ chối (bắt buộc)',
+                hintText: 'Nhập lý do từ chối...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Hủy',
+              style: TextStyle(color: Colors.grey[700]),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final reason = reasonController.text.trim();
+              if (reason.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Vui lòng nhập lý do từ chối'),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+                return;
+              }
+              
+              Navigator.pop(context); // Close dialog first
+              
+              // Show loading
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Row(
+                    children: [
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      Text('Đang từ chối...'),
+                    ],
+                  ),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+              
+              final adminService = Provider.of<AdminService>(context, listen: false);
+              final success = await adminService.rejectEvent(approval.id.toString(), reason: reason);
+              
+              if (success && mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Đã từ chối sự kiện "${approval.event.title}"'),
+                    backgroundColor: Colors.red,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+                
+                // Reload pending events
+                _loadPendingEvents();
+              } else if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Không thể từ chối sự kiện. Vui lòng thử lại.'),
+                    backgroundColor: Colors.red,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Từ chối'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _onNavigationTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+    // Navigate based on index (NEW: 5 tabs)
+    // 0 -> Admin Dashboard
+    // 1 -> User Management
+    // 2 -> Event Management (replacing old Approval)
+    // 3 -> Reports
+    // 4 -> Profile
+    if (index == 0) {
+      Navigator.of(context).pushReplacementNamed(AppRoutes.admin);
+      return;
+    }
+    if (index == 1) {
+      Navigator.of(context).pushNamed('/admin/users');
+      return;
+    }
+    if (index == 2) {
+      Navigator.of(context).pushNamed('/admin/events');
+      return;
+    }
+    if (index == 4) {
+      Navigator.of(context).pushNamed(AppRoutes.profile);
+      return;
+    }
+    // For other tabs, stay on current screen
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Authorization guard: only allow system admins
+    final auth = Provider.of<AuthService>(context);
+    final user = auth.user;
+    
+    // Use helper method instead of role check
+    if (!auth.isAuthenticated || user == null || !user.canApproveEvents) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          title: const Text('Phê duyệt sự kiện', style: TextStyle(color: Colors.black)),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.lock_outline, size: 72, color: Colors.grey[400]),
+                const SizedBox(height: 16),
+                const Text('Bạn không có quyền truy cập trang này.', textAlign: TextAlign.center, style: TextStyle(fontSize: 16)),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: () {
+                    if (auth.isAuthenticated && user != null) {
+                      // Navigate back based on user permissions
+                      if (user.hasClubAdminPermission) {
+                        Navigator.of(context).pushReplacementNamed(AppRoutes.clubHome);
+                      } else {
+                        Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+                      }
+                    } else {
+                      Navigator.of(context).pushReplacementNamed(AppRoutes.login);
+                    }
+                  },
+                  child: const Text('Quay lại'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text(
+          'Phê duyệt sự kiện',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.black),
+            onPressed: _loadPendingEvents,
+            tooltip: 'Tải lại',
+          ),
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined, color: Colors.black),
+            onPressed: () {
+              // TODO: Navigate to notifications
+            },
+          ),
+        ],
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _pendingApprovals.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.check_circle_outline,
+                    size: 80,
+                    color: Colors.grey[400],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Không có sự kiện nào cần phê duyệt',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _pendingApprovals.length,
+              itemBuilder: (context, index) {
+                final approval = _pendingApprovals[index];
+                return ApprovalEventCard(
+                  event: approval.event,
+                  onViewDetails: () => _handleViewDetails(approval.event),
+                  onApprove: () => _handleApprove(approval),
+                  onReject: () => _handleReject(approval),
+                );
+              },
+            ),
+      bottomNavigationBar: AppNavBar(
+        currentIndex: _selectedIndex,
+        onTap: _onNavigationTapped,
+        roleOverride: 'system_admin',
+      ),
+    );
+  }
+}
+

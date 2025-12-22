@@ -1,0 +1,495 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:event_connect/features/event_management/domain/models/event.dart';
+import 'package:event_connect/features/admin_dashboard/domain/models/activity.dart';
+import 'package:event_connect/features/admin_dashboard/domain/services/admin_service.dart';
+import 'package:event_connect/features/admin_dashboard/presentation/widgets/stat_card.dart';
+import 'package:event_connect/features/admin_dashboard/presentation/widgets/pending_event_card.dart';
+import 'package:event_connect/features/admin_dashboard/presentation/widgets/activity_item.dart';
+import 'package:event_connect/features/admin_dashboard/presentation/widgets/quick_action_button.dart';
+import 'package:event_connect/core/widgets/app_nav_bar.dart';
+import 'package:event_connect/app_routes.dart';
+import 'package:event_connect/features/admin_dashboard/presentation/widgets/notification_bell_admin.dart';
+
+class AdminHomeScreen extends StatefulWidget {
+  final bool showBottomNav;
+  final ValueChanged<int>? onTabSelected;
+
+  const AdminHomeScreen({super.key, this.showBottomNav = true, this.onTabSelected});
+
+  @override
+  State<AdminHomeScreen> createState() => _AdminHomeScreenState();
+}
+
+class _AdminHomeScreenState extends State<AdminHomeScreen> {
+  int _selectedIndex = 0;
+  bool _isLoadingPendingEvents = true;
+  bool _isLoadingActivities = true;
+  List<Event> _pendingEvents = [];
+  List<Activity> _recentActivities = [];
+
+  @override
+  void initState() {
+    super.initState();
+    // Defer data loading to avoid calling setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadData();
+    });
+  }
+
+  Future<void> _loadData() async {
+    final adminService = Provider.of<AdminService>(context, listen: false);
+    
+    // Fetch statistics
+    await adminService.fetchStats();
+    
+    // Fetch pending events
+    _loadPendingEvents();
+    
+    // Fetch recent activities
+    _loadActivities();
+  }
+
+  Future<void> _loadPendingEvents() async {
+    setState(() => _isLoadingPendingEvents = true);
+    
+    final adminService = Provider.of<AdminService>(context, listen: false);
+    final response = await adminService.fetchPendingApprovals();
+    
+    if (response['status'] == 200) {
+      final results = response['body']['results'] as List<dynamic>;
+      setState(() {
+        // Filter to only show pending events (not rejected/approved)
+        _pendingEvents = results
+            .map((json) => Event.fromJson(json['event']))
+            .where((event) => event.status == null || event.status == 'pending')
+            .toList();
+        _isLoadingPendingEvents = false;
+      });
+    } else {
+      setState(() => _isLoadingPendingEvents = false);
+    }
+  }
+
+  Future<void> _loadActivities() async {
+    setState(() => _isLoadingActivities = true);
+    
+    final adminService = Provider.of<AdminService>(context, listen: false);
+    final response = await adminService.fetchActivities(limit: 10);
+    
+    if (response['status'] == 200) {
+      final results = response['body']['results'] as List<dynamic>;
+      setState(() {
+        _recentActivities = results.map((json) {
+          return Activity(
+            id: json['id'].toString(),
+            icon: _getIconForAction(json['action']),
+            title: json['description'] ?? '',
+            subtitle: json['user']?['username'] ?? '',
+            timestamp: _formatTimestamp(json['created_at']),
+          );
+        }).toList();
+        _isLoadingActivities = false;
+      });
+    } else {
+      setState(() => _isLoadingActivities = false);
+    }
+  }
+
+  String _getIconForAction(String? action) {
+    switch (action) {
+      case 'event_approved':
+        return 'check_circle';
+      case 'event_rejected':
+        return 'cancel';
+      case 'event_created':
+        return 'event';
+      case 'user_registered':
+        return 'person_add';
+      default:
+        return 'info';
+    }
+  }
+
+  String _formatTimestamp(String? timestamp) {
+    if (timestamp == null) return '';
+    try {
+      final date = DateTime.parse(timestamp);
+      final now = DateTime.now();
+      final difference = now.difference(date);
+      
+      if (difference.inMinutes < 60) {
+        return '${difference.inMinutes} phút trước';
+      } else if (difference.inHours < 24) {
+        return '${difference.inHours} giờ trước';
+      } else if (difference.inDays == 1) {
+        return 'Hôm qua';
+      } else {
+        return '${difference.inDays} ngày trước';
+      }
+    } catch (e) {
+      return '';
+    }
+  }
+
+  Future<void> _handleApproveEvent(Event event) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Phê duyệt sự kiện'),
+        content: Text(
+            'Bạn có chắc chắn muốn phê duyệt sự kiện "${event.title}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+            ),
+            child: const Text('Phê duyệt'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final admin = context.read<AdminService>();
+      final success = await admin.approveEvent(event.id.toString());
+      
+      if (mounted) {
+        if (success) {
+          // Reload data to update UI
+          _loadData();
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Đã phê duyệt sự kiện "${event.title}"'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Không thể phê duyệt sự kiện'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _handleRejectEvent(Event event) async {
+    final reasonController = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Từ chối sự kiện'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Bạn có chắc chắn muốn từ chối sự kiện "${event.title}"?'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                labelText: 'Lý do từ chối *',
+                border: OutlineInputBorder(),
+                hintText: 'Nhập lý do từ chối...',
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (reasonController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Vui lòng nhập lý do từ chối')),
+                );
+                return;
+              }
+              Navigator.pop(context, true);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Từ chối'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final reason = reasonController.text.trim();
+      if (reason.isEmpty) return;
+
+      final admin = context.read<AdminService>();
+      final success = await admin.rejectEvent(event.id.toString(), reason: reason);
+      
+      if (mounted) {
+        if (success) {
+          // Reload data to update UI
+          _loadData();
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Đã từ chối sự kiện "${event.title}"'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Không thể từ chối sự kiện'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  bool get _shouldDelegateToShell => !widget.showBottomNav && widget.onTabSelected != null;
+
+  void _navigateToAdminSection(int tabIndex, String routeName) {
+    if (_shouldDelegateToShell) {
+      widget.onTabSelected!(tabIndex);
+    } else {
+      Navigator.of(context).pushNamed(routeName);
+    }
+  }
+
+  void _onNavigationTapped(int index) {
+    if (widget.showBottomNav) {
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
+    // Navigate to the appropriate screen for admin tabs.
+    // Index mapping (as defined in AppNavBar for system_admin):
+    // 0 -> Dashboard (stay on admin home)
+    // 1 -> User Management
+    // 2 -> Event Management
+    // 3 -> Reports
+    // 4 -> Profile
+    if (index == 1) {
+      _navigateToAdminSection(index, '/admin/users');
+      return;
+    }
+    if (index == 2) {
+      _navigateToAdminSection(index, '/admin/events');
+      return;
+    }
+    if (index == 3) {
+      _navigateToAdminSection(index, AppRoutes.adminReports);
+      return;
+    }
+    if (index == 4) {
+      _navigateToAdminSection(index, AppRoutes.profile);
+      return;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AdminService>(
+      builder: (context, adminService, _) {
+        final stats = adminService.stats;
+        final isLoading = adminService.isLoading;
+        
+        return Scaffold(
+          backgroundColor: Colors.white,
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            title: const Text(
+              'EventConnect Admin',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.refresh, color: Colors.black),
+                onPressed: _loadData,
+              ),
+              NotificationBellAdmin(iconColor: Colors.black),
+            ],
+          ),
+          body: isLoading && stats == null
+              ? const Center(child: CircularProgressIndicator())
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Statistics Section
+                      const Text(
+                        'Tổng quan thống kê',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: StatCard(
+                              icon: Icons.event_outlined,
+                              label: 'Tổng số sự kiện',
+                              value: stats?.overview.totalEvents.toString() ?? '0',
+                              backgroundColor: Colors.blue,
+                              iconColor: Colors.blue,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: StatCard(
+                              icon: Icons.people_outline,
+                              label: 'Tổng số người dùng',
+                              value: stats?.overview.totalUsers.toString() ?? '0',
+                              backgroundColor: Colors.orange,
+                              iconColor: Colors.orange,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 32),
+
+                      // Pending Approvals Section
+                      const Text(
+                        'Phê duyệt đang chờ xử lý',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      if (_isLoadingPendingEvents)
+                        const Center(child: CircularProgressIndicator())
+                      else if (_pendingEvents.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(32.0),
+                          child: Center(
+                            child: Text(
+                              'Không có sự kiện nào đang chờ phê duyệt',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          ),
+                        )
+                      else
+                        ..._pendingEvents.map((event) => PendingEventCard(
+                              event: event,
+                              onApprove: () => _handleApproveEvent(event),
+                              onReject: () => _handleRejectEvent(event),
+                            )),
+                      const SizedBox(height: 32),
+
+                      // Recent Activities Section
+                      const Text(
+                        'Hoạt động gần đây',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      if (_isLoadingActivities)
+                        const Center(child: CircularProgressIndicator())
+                      else if (_recentActivities.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(32.0),
+                          child: Center(
+                            child: Text(
+                              'Chưa có hoạt động nào',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          ),
+                        )
+                      else
+                        ..._recentActivities.map((activity) => ActivityItem(
+                              activity: activity,
+                            )),
+                      const SizedBox(height: 32),
+
+                      // Quick Actions Section
+                      const Text(
+                        'Hành động nhanh',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      GridView.count(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 16,
+                        crossAxisSpacing: 16,
+                        childAspectRatio: 1.5,
+                        children: [
+                          QuickActionButton(
+                            icon: Icons.people_outline,
+                            label: 'Quản lý Người dùng',
+                            onTap: () {
+                              _navigateToAdminSection(1, '/admin/users');
+                            },
+                          ),
+                          QuickActionButton(
+                            icon: Icons.event_outlined,
+                            label: 'Quản lý Sự kiện',
+                            onTap: () {
+                              _navigateToAdminSection(2, '/admin/events');
+                            },
+                          ),
+                          QuickActionButton(
+                            icon: Icons.assessment_outlined,
+                            label: 'Thống kê Chi tiết',
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Tính năng đang phát triển')),
+                              );
+                            },
+                          ),
+                          QuickActionButton(
+                            icon: Icons.settings_outlined,
+                            label: 'Cài đặt Hệ thống',
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Tính năng đang phát triển')),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 80), // Space for bottom navigation
+                    ],
+                  ),
+                ),
+          bottomNavigationBar: widget.showBottomNav
+              ? AppNavBar(
+                  currentIndex: _selectedIndex,
+                  onTap: _onNavigationTapped,
+                  roleOverride: 'system_admin',
+                )
+              : null,
+        );
+      },
+    );
+  }
+}

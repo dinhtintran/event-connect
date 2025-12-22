@@ -1,0 +1,42 @@
+import 'package:flutter/material.dart';
+import 'package:event_connect/features/event_management/presentation/screens/home_screen.dart';
+import 'package:event_connect/features/event_management/presentation/screens/my_events_screen.dart';
+import 'package:event_connect/features/event_management/presentation/screens/explore_screen.dart';
+import 'package:event_connect/features/profile/presentation/screens/profile_screen.dart';
+import 'package:event_connect/core/widgets/app_nav_bar.dart';
+
+/// Main screen that hosts the bottom navigation bar for student users.
+/// Switches between different student-facing screens.
+class MainScreen extends StatefulWidget {
+  const MainScreen({super.key});
+
+  @override
+  State<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends State<MainScreen> {
+  int _currentIndex = 0;
+
+  final List<Widget> _screens = [
+    const HomeScreen(),
+    const ExploreScreen(),
+    const MyEventsScreen(),
+    const ProfileScreen(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: _screens[_currentIndex],
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.only(bottom: 0),
+        child: AppNavBar(
+          currentIndex: _currentIndex,
+          onTap: (index) => setState(() => _currentIndex = index),
+        ),
+      ),
+    );
+  }
+}
+
+
