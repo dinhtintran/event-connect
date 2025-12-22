@@ -65,7 +65,7 @@ class ClubApi {
   /// POST /api/clubs/clubs/ - Tạo CLB mới (System Admin only)
   Future<Map<String, dynamic>> createClub(Map<String, dynamic> clubData) async {
     _dbg('POST /api/clubs/clubs/');
-    try:
+    try {
       final res = await dio.post('/api/clubs/clubs/', data: clubData);
       _dbg('response ${res.statusCode} ${res.requestOptions.uri}');
       return {'status': res.statusCode, 'body': res.data};
