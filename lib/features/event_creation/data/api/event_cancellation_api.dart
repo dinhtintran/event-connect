@@ -66,11 +66,11 @@ class EventCancellationApi {
     }
   }
 
-  /// GET /api/event-cancellation-requests/pending/ - System Admin lấy yêu cầu pending
+  /// GET /api/event_management/event-cancellation-requests/pending/ - System Admin lấy yêu cầu pending
   Future<Map<String, dynamic>> getPendingRequests() async {
-    _dbg('GET /api/event-cancellation-requests/pending/');
+    _dbg('GET /api/event_management/event-cancellation-requests/pending/');
     try {
-      final res = await dio.get('/api/event-cancellation-requests/pending/');
+      final res = await dio.get('/api/event_management/event-cancellation-requests/pending/');
       _dbg('response ${res.statusCode} ${res.requestOptions.uri}');
       return {'status': res.statusCode, 'body': res.data};
     } on DioException catch (e) {
@@ -85,13 +85,13 @@ class EventCancellationApi {
     }
   }
 
-  /// POST /api/event-cancellation-requests/{id}/review/ - System Admin xét duyệt
+  /// POST /api/event_management/event-cancellation-requests/{id}/review/ - System Admin xét duyệt
   Future<Map<String, dynamic>> reviewRequest({
     required int requestId,
     required String action, // 'approve' | 'reject'
     String? adminComment,
   }) async {
-    _dbg('POST /api/event-cancellation-requests/$requestId/review/');
+    _dbg('POST /api/event_management/event-cancellation-requests/$requestId/review/');
     try {
       final data = {
         'action': action,
@@ -100,7 +100,7 @@ class EventCancellationApi {
       };
       
       final res = await dio.post(
-        '/api/event-cancellation-requests/$requestId/review/',
+        '/api/event_management/event-cancellation-requests/$requestId/review/',
         data: data,
       );
       _dbg('response ${res.statusCode} ${res.requestOptions.uri}');

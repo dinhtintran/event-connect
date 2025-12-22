@@ -14,9 +14,11 @@ class ClubEventCard extends StatelessWidget {
   final VoidCallback? onViewParticipants;
   final VoidCallback? onDelete;
   final VoidCallback? onRequestCancellation;
+  final VoidCallback? onSubmitForApproval;
   final VoidCallback? onTap;
   final bool canDelete; // Cho phép xóa hay không (dựa vào trạng thái)
   final bool canRequestCancellation; // Cho phép yêu cầu hủy (chỉ với approved events)
+  final bool canSubmitForApproval; // Cho phép gửi duyệt (chỉ với draft events)
 
   const ClubEventCard({
     super.key,
@@ -31,9 +33,11 @@ class ClubEventCard extends StatelessWidget {
     this.onViewParticipants,
     this.onDelete,
     this.onRequestCancellation,
+    this.onSubmitForApproval,
     this.onTap,
     this.canDelete = false,
     this.canRequestCancellation = false,
+    this.canSubmitForApproval = false,
   });
 
   @override
@@ -62,15 +66,7 @@ class ClubEventCard extends StatelessWidget {
                 child: SizedBox(
                   height: 160,
                   width: double.infinity,
-                  child: Image.asset(
-                    image,
-                    fit: BoxFit.cover,
-                    errorBuilder: (ctx, err, st) => Container(
-                      height: 160,
-                      width: double.infinity,
-                      color: Colors.grey.shade300,
-                    ),
-                  ),
+                  child: _buildPoster(),
                 ),
               ),
               Positioned(
@@ -205,6 +201,20 @@ class ClubEventCard extends StatelessWidget {
                           icon: const Icon(Icons.cancel_outlined, size: 18),
                           label: const Text('Yêu cầu hủy'),
                         ),
+                      if (canSubmitForApproval && onSubmitForApproval != null)
+                        OutlinedButton.icon(
+                          onPressed: onSubmitForApproval,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.green,
+                            side: const BorderSide(color: Colors.green),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                          icon: const Icon(Icons.send, size: 18),
+                          label: const Text('Gửi duyệt'),
+                        ),
                       ElevatedButton(
                         onPressed: onTap,
                         style: ElevatedButton.styleFrom(
@@ -232,6 +242,29 @@ class ClubEventCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPoster() {
+    if (image.isEmpty) {
+      return Container(color: Colors.grey.shade200);
+    }
+
+    final isNetwork = image.startsWith('http');
+    final fallback = Container(color: Colors.grey.shade300);
+
+    if (isNetwork) {
+      return Image.network(
+        image,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => fallback,
+      );
+    }
+
+    return Image.asset(
+      image,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => fallback,
     );
   }
 }

@@ -232,11 +232,11 @@ class AdminApi {
   // ==================== COMPATIBILITY METHODS ====================
   // For EventManagementScreen & ApprovalScreen (legacy compatibility)
 
-  /// GET /api/approvals/pending/ - Get pending event approvals
+  /// GET /api/event_management/approvals/pending/ - Get pending event approvals
   Future<Map<String, dynamic>> getPendingApprovals({int page = 1}) async {
-    _dbg('GET /api/approvals/pending/');
+    _dbg('GET /api/event_management/approvals/pending/');
     try {
-      final res = await dio.get('/api/approvals/pending/', queryParameters: {'page': page});
+      final res = await dio.get('/api/event_management/approvals/pending/', queryParameters: {'page': page});
       _dbg('response ${res.statusCode}');
       return {'status': res.statusCode, 'body': res.data};
     } on DioException catch (e) {
@@ -264,11 +264,11 @@ class AdminApi {
     }
   }
 
-  /// GET /api/event-cancellation-requests/pending/ - Get pending cancellation requests
+  /// GET /api/event_management/event-cancellation-requests/pending/ - Get pending cancellation requests
   Future<Map<String, dynamic>> getPendingCancellationRequests() async {
-    _dbg('GET /api/event-cancellation-requests/pending/');
+    _dbg('GET /api/event_management/event-cancellation-requests/pending/');
     try {
-      final res = await dio.get('/api/event-cancellation-requests/pending/');
+      final res = await dio.get('/api/event_management/event-cancellation-requests/pending/');
       _dbg('response ${res.statusCode}');
       return {'status': res.statusCode, 'body': res.data};
     } on DioException catch (e) {
@@ -280,19 +280,19 @@ class AdminApi {
     }
   }
 
-  /// POST /api/event-cancellation-requests/{id}/review/ - Review cancellation request
+  /// POST /api/event_management/event-cancellation-requests/{id}/review/ - Review cancellation request
   Future<Map<String, dynamic>> reviewCancellationRequest({
     required int requestId,
     required String action,
     String? adminComment,
   }) async {
-    _dbg('POST /api/event-cancellation-requests/$requestId/review/');
+    _dbg('POST /api/event_management/event-cancellation-requests/$requestId/review/');
     try {
       final body = <String, dynamic>{
         'action': action,
         if (adminComment != null && adminComment.isNotEmpty) 'admin_comment': adminComment,
       };
-      final res = await dio.post('/api/event-cancellation-requests/$requestId/review/', data: body);
+      final res = await dio.post('/api/event_management/event-cancellation-requests/$requestId/review/', data: body);
       _dbg('response ${res.statusCode}');
       return {'status': res.statusCode, 'body': res.data};
     } on DioException catch (e) {

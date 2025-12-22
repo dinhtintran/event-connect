@@ -13,7 +13,9 @@ import 'package:event_connect/features/authentication/authentication.dart';
 import 'package:event_connect/features/event_creation/domain/models/club.dart';
 
 class ClubHomePage extends StatefulWidget {
-  const ClubHomePage({super.key});
+  final bool showBottomNav;
+
+  const ClubHomePage({super.key, this.showBottomNav = true});
 
   @override
   State<ClubHomePage> createState() => _ClubHomePageState();
@@ -29,6 +31,7 @@ class _ClubHomePageState extends State<ClubHomePage> {
   int _unreadCount = 0;
   bool _isLoading = true;
   String? _errorMessage;
+  String? _clubId;
   
   // Repository
   late final ClubAdminRepository _repository;
@@ -59,47 +62,24 @@ class _ClubHomePageState extends State<ClubHomePage> {
         return;
       }
       
-      // Try to get club ID from user profile or fetch clubs list
-      String? clubId;
-      String? clubName;
-      
-      // Check if user has club info in profile
-      if (user.profile.clubName != null && user.profile.clubName!.isNotEmpty) {
-        clubName = user.profile.clubName;
-        // Try to find club ID by fetching clubs list
-        try {
-          final clubApi = ClubAdminApi();
-          final clubsResult = await clubApi.clubApi.getAllClubs();
-          if (clubsResult['status'] == 200) {
-            final clubs = clubsResult['body'];
-            if (clubs is Map && clubs.containsKey('results')) {
-              final results = clubs['results'] as List;
-              try {
-                final matchingClub = results.firstWhere(
-                  (c) => c['name'] == clubName,
-                );
-                clubId = matchingClub['id']?.toString();
-              } catch (e) {
-                // Club not found by name
-              }
-            } else if (clubs is List) {
-              try {
-                final matchingClub = clubs.firstWhere(
-                  (c) => c['name'] == clubName,
-                );
-                clubId = matchingClub['id']?.toString();
-              } catch (e) {
-                // Club not found by name
-              }
-            }
-          }
-        } catch (e) {
-          debugPrint('Error fetching clubs: $e');
-        }
+      String clubId;
+      try {
+        clubId = await _repository.getCurrentClubId();
+      } on ClubNotAssignedException catch (e) {
+        setState(() {
+          _errorMessage = e.message;
+          _isLoading = false;
+        });
+        return;
+      } on ClubAssignmentException catch (e) {
+        setState(() {
+          _errorMessage = e.message;
+          _isLoading = false;
+        });
+        return;
       }
-      
-      // Fallback: use default club ID if not found (for testing)
-      clubId = clubId ?? '1';
+
+      _clubId = clubId;
       
       // Fetch data sequentially with error handling for each
       List<Event> recentEvents = [];
@@ -229,8 +209,8 @@ class _ClubHomePageState extends State<ClubHomePage> {
     // Navigation based on index:
     // 0 -> Trang Chủ (stay here)
     // 1 -> Sự kiện
-    // 2 -> Thư (not implemented)
-    // 3 -> Thống Kê (not implemented)
+    // 2 -> Thư (Báo cáo sự kiện - tổng quan)
+    // 3 -> Thống Kê (Thống kê chi tiết)
     // 4 -> Hồ Sơ
 
     if (index == 1) {
@@ -240,6 +220,28 @@ class _ClubHomePageState extends State<ClubHomePage> {
         Navigator.pushNamed(context, AppRoutes.clubEvents);
       } catch (e, st) {
         debugPrint('Failed to navigate to ClubEventsPage (named): $e\n$st');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi khi chuyển trang: ${e.toString()}')));
+        }
+      }
+    } else if (index == 2) {
+      // Navigate to Statistics/Report page (overview)
+      debugPrint('ClubHomePage: tapping Thư tab -> navigate to ClubStatisticsScreen');
+      try {
+        Navigator.pushNamed(context, AppRoutes.clubStatistics);
+      } catch (e, st) {
+        debugPrint('Failed to navigate to ClubStatisticsScreen: $e\n$st');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi khi chuyển trang: ${e.toString()}')));
+        }
+      }
+    } else if (index == 3) {
+      // Navigate to Statistics Detail page
+      debugPrint('ClubHomePage: tapping Thống Kê tab -> navigate to ClubStatisticsDetailScreen');
+      try {
+        Navigator.pushNamed(context, AppRoutes.clubStatisticsDetail);
+      } catch (e, st) {
+        debugPrint('Failed to navigate to ClubStatisticsDetailScreen: $e\n$st');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi khi chuyển trang: ${e.toString()}')));
         }
@@ -510,6 +512,7 @@ class _ClubHomePageState extends State<ClubHomePage> {
                                     : event.registrationCount,
                                 capacity: event.capacity,
                                 isLive: _isEventLive(event),
+                                posterUrl: event.posterUrl,
                                 onManage: () => _navigateToParticipants(event),
                                 onEdit: () => _navigateToEditEvent(event),
                               ),
@@ -564,26 +567,23 @@ class _ClubHomePageState extends State<ClubHomePage> {
       ),
 
       // Bottom Navigation Bar
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _selectedIndex,
-        selectedItemColor: const Color(0xFF5568FF),
-        unselectedItemColor: Colors.black54,
-        showUnselectedLabels: true,
-        onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(
-              icon: Icon(Icons.home), label: 'Trang Chủ'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.event), label: 'Sự Kiện'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.mail_outline), label: 'Thư'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart_outlined), label: 'Thống Kê'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline), label: 'Hồ Sơ'),
-        ],
-      ),
+      bottomNavigationBar: widget.showBottomNav
+          ? BottomNavigationBar(
+              type: BottomNavigationBarType.fixed,
+              currentIndex: _selectedIndex,
+              selectedItemColor: const Color(0xFF5568FF),
+              unselectedItemColor: Colors.black54,
+              showUnselectedLabels: true,
+              onTap: _onItemTapped,
+              items: const [
+                BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Trang Chủ'),
+                BottomNavigationBarItem(icon: Icon(Icons.event), label: 'Sự Kiện'),
+                BottomNavigationBarItem(icon: Icon(Icons.description_outlined), label: 'Báo cáo'),
+                BottomNavigationBarItem(icon: Icon(Icons.bar_chart_outlined), label: 'Thống Kê'),
+                BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Hồ Sơ'),
+              ],
+            )
+          : null,
     );
   }
   

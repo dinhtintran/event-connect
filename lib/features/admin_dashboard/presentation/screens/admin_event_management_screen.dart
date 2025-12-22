@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:event_connect/features/admin/domain/services/admin_service.dart';
 import 'package:event_connect/features/event_management/domain/models/event.dart';
 import 'package:event_connect/features/event_creation/domain/models/event_cancellation_request.dart';
+import 'package:event_connect/features/admin_dashboard/presentation/widgets/notification_bell_admin.dart';
 
 class AdminEventManagementScreen extends StatefulWidget {
   const AdminEventManagementScreen({super.key});
@@ -111,6 +112,7 @@ class _AdminEventManagementScreenState extends State<AdminEventManagementScreen>
           ],
         ),
         actions: [
+          const NotificationBellAdmin(),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {

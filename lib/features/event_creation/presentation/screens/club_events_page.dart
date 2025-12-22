@@ -15,7 +15,9 @@ import 'package:event_connect/features/authentication/authentication.dart';
 import 'package:intl/intl.dart';
 
 class ClubEventsPage extends StatefulWidget {
-  const ClubEventsPage({super.key});
+  final bool showBottomNav;
+
+  const ClubEventsPage({super.key, this.showBottomNav = true});
 
   @override
   State<ClubEventsPage> createState() => _ClubEventsPageState();
@@ -23,26 +25,41 @@ class ClubEventsPage extends StatefulWidget {
 
 class _ClubEventsPageState extends State<ClubEventsPage> {
   int _selectedIndex = 1; // Tab "Sự kiện"
-  
+
   // Data state
   List<Event> _events = [];
   bool _isLoading = true;
   String? _errorMessage;
-  
+
   // Filter state
   String _selectedStatus = 'all';
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
-  
+
   // Repository
   late final ClubAdminRepository _repository;
   String? _clubId;
+
+  int _unreadCount = 0;
 
   @override
   void initState() {
     super.initState();
     _repository = ClubAdminRepository(api: ClubAdminApi());
     _loadClubIdAndEvents();
+    _loadUnreadCount();
+  }
+
+  Future<void> _loadUnreadCount() async {
+    try {
+      final count = await _repository.getUnreadNotificationCount();
+      if (!mounted) return;
+      setState(() {
+        _unreadCount = count;
+      });
+    } catch (e) {
+      // ignore error
+    }
   }
   
   @override
@@ -52,10 +69,9 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
   }
   
   Future<void> _loadClubIdAndEvents() async {
-    // Get club ID from user profile
     final authService = Provider.of<AuthService>(context, listen: false);
     final user = authService.user;
-    
+
     if (user == null) {
       setState(() {
         _errorMessage = 'Vui lòng đăng nhập';
@@ -63,47 +79,49 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
       });
       return;
     }
-    
-    // Try to get club ID (similar to club_home_page logic)
-    String? clubId;
-    if (user.profile.clubName != null && user.profile.clubName!.isNotEmpty) {
-      try {
-        final clubApi = ClubAdminApi();
-        final clubsResult = await clubApi.clubApi.getAllClubs();
-        if (clubsResult['status'] == 200) {
-          final clubs = clubsResult['body'];
-          if (clubs is Map && clubs.containsKey('results')) {
-            final results = clubs['results'] as List;
-            try {
-              final matchingClub = results.firstWhere(
-                (c) => c['name'] == user.profile.clubName,
-              );
-              clubId = matchingClub['id']?.toString();
-            } catch (e) {
-              debugPrint('Club not found by name');
-            }
-          } else if (clubs is List) {
-            try {
-              final matchingClub = clubs.firstWhere(
-                (c) => c['name'] == user.profile.clubName,
-              );
-              clubId = matchingClub['id']?.toString();
-            } catch (e) {
-              debugPrint('Club not found by name');
-            }
-          }
-        }
-      } catch (e) {
-        debugPrint('Error fetching clubs: $e');
-      }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final resolvedId = await _repository.getCurrentClubId();
+      if (!mounted) return;
+
+      setState(() {
+        _clubId = resolvedId;
+      });
+
+      await _loadEvents();
+    } on ClubNotAssignedException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.message;
+        _isLoading = false;
+      });
+    } on ClubAssignmentException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.message;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Không thể tải thông tin CLB: $e';
+        _isLoading = false;
+      });
     }
-    
-    _clubId = clubId ?? '1'; // Fallback
-    _loadEvents();
   }
   
   Future<void> _loadEvents() async {
-    if (_clubId == null) return;
+    if (_clubId == null) {
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
     
     setState(() {
       _isLoading = true;
@@ -374,6 +392,81 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
       }
     }
   }
+
+  Future<void> _showSubmitForApprovalDialog(Event event) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Gửi duyệt sự kiện'),
+        content: Text(
+          'Sự kiện "${event.title}" sẽ được chuyển sang trạng thái chờ duyệt và gửi đến System Admin. Bạn có chắc chắn muốn gửi?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.indigo,
+            ),
+            child: const Text(
+              'Gửi duyệt',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      _submitForApproval(event);
+    }
+  }
+
+  Future<void> _submitForApproval(Event event) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      await _repository.updateEvent(
+        event.id.toString(),
+        {'status': 'pending'},
+      );
+
+      if (mounted) Navigator.pop(context);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đã gửi duyệt sự kiện. Vui lòng chờ System Admin xét duyệt.'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+
+      _loadEvents();
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Không thể gửi duyệt: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    }
+  }
   
   void _navigateToEventDetail(Event event) {
     // Navigate to event detail screen (can create a dedicated route later)
@@ -527,13 +620,19 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
     // Navigation based on index:
     // 0 -> Trang Chủ
     // 1 -> Sự kiện (current page)
-    // 2 -> Thư
-    // 3 -> Thống Kê
+    // 2 -> Thư (Báo cáo sự kiện - tổng quan)
+    // 3 -> Thống Kê (Thống kê chi tiết)
     // 4 -> Hồ Sơ
 
     if (index == 0) {
       // Go back to Club Home Page
       Navigator.push(context, _createSlideBackRoute(const ClubHomePage()));
+    } else if (index == 2) {
+      // Navigate to Statistics/Report page (overview)
+      Navigator.pushNamed(context, AppRoutes.clubStatistics);
+    } else if (index == 3) {
+      // Navigate to Statistics Detail page
+      Navigator.pushNamed(context, AppRoutes.clubStatisticsDetail);
     } else if (index == 4) {
       // Navigate to Profile
       Navigator.pushNamed(context, AppRoutes.profile);
@@ -559,9 +658,37 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
           ),
         ),
         actions: [
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.notifications_none, color: Colors.black),
+          Stack(
+            children: [
+              IconButton(
+                onPressed: () {
+                  Navigator.pushNamed(context, AppRoutes.notifications);
+                },
+                icon: const Icon(Icons.notifications_none, color: Colors.black),
+              ),
+              if (_unreadCount > 0)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                    child: Text(
+                      _unreadCount > 99 ? '99+' : '$_unreadCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
           ),
           Padding(
             padding: const EdgeInsets.only(right: 16),
@@ -641,8 +768,10 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
                   buildFilterChip('Bản nháp', 'draft', _selectedStatus == 'draft'),
                   buildFilterChip('Chờ duyệt', 'pending', _selectedStatus == 'pending'),
                   buildFilterChip('Đã duyệt', 'approved', _selectedStatus == 'approved'),
+                  buildFilterChip('Đang diễn ra', 'ongoing', _selectedStatus == 'ongoing'),
                   buildFilterChip('Bị từ chối', 'rejected', _selectedStatus == 'rejected'),
                   buildFilterChip('Đã kết thúc', 'completed', _selectedStatus == 'completed'),
+                  buildFilterChip('Đã hủy', 'cancelled', _selectedStatus == 'cancelled'),
                 ],
               ),
             ),
@@ -753,10 +882,11 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
                 // Chỉ cho phép xóa sự kiện chưa được phê duyệt
                 final canDelete = event.status != 'approved';
                 
-                // Chỉ cho phép yêu cầu hủy sự kiện đã approved và chưa kết thúc
+                // Chỉ cho phép yêu cầu hủy sự kiện đã approved/ongoing và chưa kết thúc
                 final now = DateTime.now();
-                final canRequestCancellation = event.status == 'approved' && 
+                final canRequestCancellation = (event.status == 'approved' || event.status == 'ongoing') && 
                     (event.endAt == null || event.endAt!.isAfter(now));
+                final canSubmitForApproval = event.status == 'draft';
                 
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 16),
@@ -770,11 +900,15 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
                     image: event.posterUrl,
                     canDelete: canDelete,
                     canRequestCancellation: canRequestCancellation,
+                    canSubmitForApproval: canSubmitForApproval,
                     onEdit: () => _navigateToEditEvent(event),
                     onViewParticipants: () => _navigateToParticipants(event),
                     onDelete: canDelete ? () => _showDeleteConfirmation(event) : null,
                     onRequestCancellation: canRequestCancellation 
                         ? () => _showRequestCancellationDialog(event) 
+                        : null,
+                    onSubmitForApproval: canSubmitForApproval
+                        ? () => _showSubmitForApprovalDialog(event)
                         : null,
                     onTap: () => _navigateToEventDetail(event),
                   ),
@@ -809,11 +943,13 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
       ),
 
       // Bottom Navigation Bar
-      bottomNavigationBar: AppNavBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        roleOverride: 'club_admin',
-      ),
+      bottomNavigationBar: widget.showBottomNav
+          ? AppNavBar(
+              currentIndex: _selectedIndex,
+              onTap: _onItemTapped,
+              roleOverride: 'club_admin',
+            )
+          : null,
     );
   }
 

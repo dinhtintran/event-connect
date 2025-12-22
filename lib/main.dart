@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:device_preview/device_preview.dart';
 import 'package:provider/provider.dart';
 import 'package:dio/dio.dart';
 
@@ -22,12 +24,18 @@ import 'package:event_connect/features/admin/domain/services/admin_service.dart'
 
 // Admin Dashboard (old implementation for stats/activities)
 import 'package:event_connect/features/admin_dashboard/domain/services/admin_service.dart' as admin_dash;
-import 'package:event_connect/features/admin_dashboard/presentation/screens/admin_home_screen.dart';
 import 'package:event_connect/features/admin_dashboard/presentation/screens/admin_user_management_screen.dart';
 import 'package:event_connect/features/admin_dashboard/presentation/screens/admin_event_management_screen.dart';
+import 'package:event_connect/features/admin_dashboard/presentation/screens/admin_reports_screen.dart';
+import 'package:event_connect/features/admin_dashboard/presentation/screens/system_admin_shell.dart';
 
 void main() {
-  runApp(const EventConnectApp());
+  runApp(
+    DevicePreview(
+      enabled: !kReleaseMode,
+      builder: (context) => const EventConnectApp(),
+    ),
+  );
 }
 
 class EventConnectApp extends StatelessWidget {
@@ -98,11 +106,14 @@ class EventConnectApp extends StatelessWidget {
           AppRoutes.login: (_) => const LoginScreen(),
           AppRoutes.register: (_) => const RegisterScreen(),
           AppRoutes.home: (_) => const MainScreen(),
-          AppRoutes.clubHome: (_) => const ClubHomePage(),
+          AppRoutes.clubHome: (_) => const ClubAdminShell(),
           AppRoutes.clubEvents: (_) => const ClubEventsPage(),
+          AppRoutes.clubStatistics: (_) => const ClubStatisticsScreen(),
+          AppRoutes.clubStatisticsDetail: (_) => const ClubStatisticsDetailScreen(),
           AppRoutes.approval: (_) => const ApprovalScreen(), // Deprecated: kept for backward compatibility
           AppRoutes.eventManagement: (_) => const EventManagementScreen(),
-          AppRoutes.admin: (_) => const AdminHomeScreen(),
+          AppRoutes.admin: (_) => const SystemAdminShell(),
+          AppRoutes.adminReports: (_) => const AdminReportsScreen(),
           AppRoutes.profile: (_) => const ProfileScreen(),
           AppRoutes.notifications: (_) => const NotificationsScreen(),
           '/admin/users': (_) => const AdminUserManagementScreen(),

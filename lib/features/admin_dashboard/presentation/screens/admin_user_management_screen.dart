@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:event_connect/features/admin/domain/services/admin_service.dart';
 import 'package:event_connect/features/admin/domain/models/admin_user.dart';
+import 'package:event_connect/features/admin_dashboard/presentation/widgets/notification_bell_admin.dart';
 
 class AdminUserManagementScreen extends StatefulWidget {
   const AdminUserManagementScreen({super.key});
@@ -50,6 +51,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
       appBar: AppBar(
         title: const Text('Quản lý Người dùng'),
         actions: [
+          const NotificationBellAdmin(),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => context.read<AdminService>().loadUsers(

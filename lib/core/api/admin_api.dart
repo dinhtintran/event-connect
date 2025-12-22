@@ -12,11 +12,11 @@ class AdminApi {
     print('[AdminApi] $s');
   }
 
-  /// GET /api/admin/stats/ - Lấy thống kê tổng quan
+  /// GET /api/notifications/admin/stats/ - Lấy thống kê tổng quan
   Future<Map<String, dynamic>> getStats({String period = 'month'}) async {
-    _dbg('GET /api/admin/stats/?period=$period');
+    _dbg('GET /api/notifications/admin/stats/?period=$period');
     try {
-      final res = await dio.get('/api/admin/stats/', queryParameters: {'period': period});
+      final res = await dio.get('/api/notifications/admin/stats/', queryParameters: {'period': period});
       _dbg('response ${res.statusCode} ${res.requestOptions.uri}');
       return {'status': res.statusCode, 'body': res.data};
     } on DioException catch (e) {
@@ -28,11 +28,11 @@ class AdminApi {
     }
   }
 
-  /// GET /api/admin/activities/ - Lấy danh sách hoạt động gần đây
+  /// GET /api/notifications/admin/activities/ - Lấy danh sách hoạt động gần đây
   Future<Map<String, dynamic>> getActivities({int page = 1, int limit = 20}) async {
-    _dbg('GET /api/admin/activities/?page=$page&limit=$limit');
+    _dbg('GET /api/notifications/admin/activities/?page=$page&limit=$limit');
     try {
-      final res = await dio.get('/api/admin/activities/', queryParameters: {
+      final res = await dio.get('/api/notifications/admin/activities/', queryParameters: {
         'page': page,
         'limit': limit,
       });
@@ -47,14 +47,14 @@ class AdminApi {
     }
   }
 
-  /// GET /api/admin/users/ - Quản lý người dùng
+  /// GET /api/notifications/admin/users/ - Quản lý người dùng
   Future<Map<String, dynamic>> getUsers({
     String? role,
     String? search,
     int page = 1,
     int pageSize = 20,
   }) async {
-    _dbg('GET /api/admin/users/');
+    _dbg('GET /api/notifications/admin/users/');
     try {
       final queryParams = <String, dynamic>{
         'page': page,
@@ -63,7 +63,7 @@ class AdminApi {
       if (role != null) queryParams['role'] = role;
       if (search != null) queryParams['search'] = search;
 
-      final res = await dio.get('/api/admin/users/', queryParameters: queryParams);
+      final res = await dio.get('/api/notifications/admin/users/', queryParameters: queryParams);
       _dbg('response ${res.statusCode} ${res.requestOptions.uri}');
       return {'status': res.statusCode, 'body': res.data};
     } on DioException catch (e) {
@@ -75,11 +75,11 @@ class AdminApi {
     }
   }
 
-  /// PUT /api/admin/users/{id}/ - Cập nhật quyền user
+  /// PUT /api/notifications/admin/users/{id}/ - Cập nhật quyền user
   Future<Map<String, dynamic>> updateUserRole(String userId, String role) async {
-    _dbg('PUT /api/admin/users/$userId/');
+    _dbg('PUT /api/notifications/admin/users/$userId/');
     try {
-      final res = await dio.put('/api/admin/users/$userId/', data: {'role': role});
+      final res = await dio.put('/api/notifications/admin/users/$userId/', data: {'role': role});
       _dbg('response ${res.statusCode} ${res.requestOptions.uri}');
       return {'status': res.statusCode, 'body': res.data};
     } on DioException catch (e) {
@@ -91,11 +91,11 @@ class AdminApi {
     }
   }
 
-  /// DELETE /api/admin/users/{id}/ - Xóa user
+  /// DELETE /api/notifications/admin/users/{id}/ - Xóa user
   Future<Map<String, dynamic>> deleteUser(String userId) async {
-    _dbg('DELETE /api/admin/users/$userId/');
+    _dbg('DELETE /api/notifications/admin/users/$userId/');
     try {
-      final res = await dio.delete('/api/admin/users/$userId/');
+      final res = await dio.delete('/api/notifications/admin/users/$userId/');
       _dbg('response ${res.statusCode} ${res.requestOptions.uri}');
       return {'status': res.statusCode, 'body': res.data};
     } on DioException catch (e) {

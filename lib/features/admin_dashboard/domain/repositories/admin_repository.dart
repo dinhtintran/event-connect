@@ -10,7 +10,7 @@ class AdminRepository {
   /// Returns: {'status': int, 'body': Map<String, dynamic>}
   Future<Map<String, dynamic>> getStats({String period = 'month'}) async {
     try {
-      final uri = Uri.parse('${AppConfig.apiBaseUrl}api/admin/stats/?period=$period');
+      final uri = _buildUri('api/notifications/admin/stats/', queryParameters: {'period': period});
       final token = await _getToken();
       
       final response = await http.get(
@@ -36,7 +36,10 @@ class AdminRepository {
   /// Returns: {'status': int, 'body': {'count': int, 'results': List}}
   Future<Map<String, dynamic>> getActivities({int page = 1, int limit = 20}) async {
     try {
-      final uri = Uri.parse('${AppConfig.apiBaseUrl}api/admin/activities/?page=$page&limit=$limit');
+      final uri = _buildUri('api/notifications/admin/activities/', queryParameters: {
+        'page': page,
+        'limit': limit,
+      });
       final token = await _getToken();
       
       final response = await http.get(
@@ -62,7 +65,7 @@ class AdminRepository {
   /// Returns: {'status': int, 'body': {'count': int, 'results': List}}
   Future<Map<String, dynamic>> getPendingApprovals({int page = 1}) async {
     try {
-      final uri = Uri.parse('${AppConfig.apiBaseUrl}api/approvals/pending/?page=$page');
+      final uri = _buildUri('api/event_management/approvals/pending/', queryParameters: {'page': page});
       final token = await _getToken();
       
       final response = await http.get(
@@ -88,7 +91,7 @@ class AdminRepository {
   /// Returns: {'status': int, 'body': Map<String, dynamic>}
   Future<Map<String, dynamic>> approveEvent(String eventId, {String? comments}) async {
     try {
-      final uri = Uri.parse('${AppConfig.apiBaseUrl}api/approvals/$eventId/approve/');
+      final uri = _buildUri('api/event_management/approvals/$eventId/approve/');
       final token = await _getToken();
       
       final response = await http.post(
@@ -115,7 +118,7 @@ class AdminRepository {
   /// Returns: {'status': int, 'body': Map<String, dynamic>}
   Future<Map<String, dynamic>> rejectEvent(String eventId, {required String reason}) async {
     try {
-      final uri = Uri.parse('${AppConfig.apiBaseUrl}api/approvals/$eventId/reject/');
+      final uri = _buildUri('api/event_management/approvals/$eventId/reject/');
       final token = await _getToken();
       
       final response = await http.post(
@@ -147,15 +150,15 @@ class AdminRepository {
     int pageSize = 20,
   }) async {
     try {
-      final queryParams = <String, String>{
-        'page': page.toString(),
-        'page_size': pageSize.toString(),
+      final queryParams = <String, dynamic>{
+        'page': page,
+        'page_size': pageSize,
       };
       
       if (role != null) queryParams['role'] = role;
       if (search != null && search.isNotEmpty) queryParams['search'] = search;
       
-      final uri = Uri.parse('${AppConfig.apiBaseUrl}api/admin/users/').replace(queryParameters: queryParams);
+      final uri = _buildUri('api/notifications/admin/users/', queryParameters: queryParams);
       final token = await _getToken();
       
       final response = await http.get(
@@ -177,6 +180,24 @@ class AdminRepository {
     }
   }
   
+  Uri _buildUri(String path, {Map<String, dynamic>? queryParameters}) {
+    final base = AppConfig.apiBaseUrl.endsWith('/')
+        ? AppConfig.apiBaseUrl
+        : '${AppConfig.apiBaseUrl}/';
+    final uri = Uri.parse(base).resolve(path);
+    if (queryParameters == null || queryParameters.isEmpty) {
+      return uri;
+    }
+
+    final normalized = <String, String>{};
+    queryParameters.forEach((key, value) {
+      if (value == null) return;
+      normalized[key] = value.toString();
+    });
+
+    return uri.replace(queryParameters: normalized);
+  }
+
   /// Helper method to get access token from secure storage
   Future<String?> _getToken() async {
     try {

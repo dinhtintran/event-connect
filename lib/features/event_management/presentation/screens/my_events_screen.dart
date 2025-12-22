@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:event_connect/features/event_management/domain/models/event.dart';
+import 'package:event_connect/features/event_management/presentation/widgets/notification_bell_student.dart';
 import 'package:event_connect/features/event_management/domain/services/event_service.dart';
 import 'package:event_connect/features/event_management/presentation/screens/event_detail_screen.dart';
 import 'package:event_connect/app_routes.dart';
@@ -127,19 +128,7 @@ class _MyEventsScreenState extends State<MyEventsScreen>
           ),
           Row(
             children: [
-              GestureDetector(
-                onTap: () {
-                  Navigator.pushNamed(context, AppRoutes.notifications);
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.notifications_outlined, size: 24),
-                ),
-              ),
+              NotificationBellStudent(iconColor: Color(0xFF120D26)),
               const SizedBox(width: 12),
               GestureDetector(
                 onTap: () {

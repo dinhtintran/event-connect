@@ -12,11 +12,11 @@ class ApprovalApi {
     print('[ApprovalApi] $s');
   }
 
-  /// GET /api/approvals/pending/ - Lấy danh sách sự kiện chờ duyệt
+  /// GET /api/event_management/approvals/pending/ - Lấy danh sách sự kiện chờ duyệt
   Future<Map<String, dynamic>> getPendingApprovals() async {
-    _dbg('GET /api/approvals/pending/');
+    _dbg('GET /api/event_management/approvals/pending/');
     try {
-      final res = await dio.get('/api/approvals/pending/');
+      final res = await dio.get('/api/event_management/approvals/pending/');
       _dbg('response ${res.statusCode} ${res.requestOptions.uri}');
       return {'status': res.statusCode, 'body': res.data};
     } on DioException catch (e) {
@@ -28,12 +28,12 @@ class ApprovalApi {
     }
   }
 
-  /// POST /api/approvals/{event_id}/approve/ - Duyệt sự kiện
+  /// POST /api/event_management/approvals/{event_id}/approve/ - Duyệt sự kiện
   Future<Map<String, dynamic>> approveEvent(String eventId, {String? comment}) async {
-    _dbg('POST /api/approvals/$eventId/approve/');
+    _dbg('POST /api/event_management/approvals/$eventId/approve/');
     try {
       final data = comment != null ? {'comment': comment} : null;
-      final res = await dio.post('/api/approvals/$eventId/approve/', data: data);
+      final res = await dio.post('/api/event_management/approvals/$eventId/approve/', data: data);
       _dbg('response ${res.statusCode} ${res.requestOptions.uri}');
       return {'status': res.statusCode, 'body': res.data};
     } on DioException catch (e) {
@@ -45,11 +45,11 @@ class ApprovalApi {
     }
   }
 
-  /// POST /api/approvals/{event_id}/reject/ - Từ chối sự kiện
+  /// POST /api/event_management/approvals/{event_id}/reject/ - Từ chối sự kiện
   Future<Map<String, dynamic>> rejectEvent(String eventId, {required String comment}) async {
-    _dbg('POST /api/approvals/$eventId/reject/');
+    _dbg('POST /api/event_management/approvals/$eventId/reject/');
     try {
-      final res = await dio.post('/api/approvals/$eventId/reject/', data: {'comment': comment});
+      final res = await dio.post('/api/event_management/approvals/$eventId/reject/', data: {'comment': comment});
       _dbg('response ${res.statusCode} ${res.requestOptions.uri}');
       return {'status': res.statusCode, 'body': res.data};
     } on DioException catch (e) {
@@ -61,11 +61,11 @@ class ApprovalApi {
     }
   }
 
-  /// GET /api/approvals/history/ - Lịch sử phê duyệt
+  /// GET /api/event_management/approvals/history/ - Lịch sử phê duyệt
   Future<Map<String, dynamic>> getApprovalHistory() async {
-    _dbg('GET /api/approvals/history/');
+    _dbg('GET /api/event_management/approvals/history/');
     try {
-      final res = await dio.get('/api/approvals/history/');
+      final res = await dio.get('/api/event_management/approvals/history/');
       _dbg('response ${res.statusCode} ${res.requestOptions.uri}');
       return {'status': res.statusCode, 'body': res.data};
     } on DioException catch (e) {

@@ -9,9 +9,13 @@ import 'package:event_connect/features/admin_dashboard/presentation/widgets/acti
 import 'package:event_connect/features/admin_dashboard/presentation/widgets/quick_action_button.dart';
 import 'package:event_connect/core/widgets/app_nav_bar.dart';
 import 'package:event_connect/app_routes.dart';
+import 'package:event_connect/features/admin_dashboard/presentation/widgets/notification_bell_admin.dart';
 
 class AdminHomeScreen extends StatefulWidget {
-  const AdminHomeScreen({super.key});
+  final bool showBottomNav;
+  final ValueChanged<int>? onTabSelected;
+
+  const AdminHomeScreen({super.key, this.showBottomNav = true, this.onTabSelected});
 
   @override
   State<AdminHomeScreen> createState() => _AdminHomeScreenState();
@@ -256,37 +260,45 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     }
   }
 
+  bool get _shouldDelegateToShell => !widget.showBottomNav && widget.onTabSelected != null;
+
+  void _navigateToAdminSection(int tabIndex, String routeName) {
+    if (_shouldDelegateToShell) {
+      widget.onTabSelected!(tabIndex);
+    } else {
+      Navigator.of(context).pushNamed(routeName);
+    }
+  }
+
   void _onNavigationTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    if (widget.showBottomNav) {
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
     // Navigate to the appropriate screen for admin tabs.
     // Index mapping (as defined in AppNavBar for system_admin):
     // 0 -> Dashboard (stay on admin home)
     // 1 -> User Management
     // 2 -> Event Management
-    // 3 -> Reports (not implemented)
+    // 3 -> Reports
     // 4 -> Profile
     if (index == 1) {
-      // Open user management screen
-      Navigator.of(context).pushNamed('/admin/users');
+      _navigateToAdminSection(index, '/admin/users');
       return;
     }
     if (index == 2) {
-      // Open event management screen
-      Navigator.of(context).pushNamed('/admin/events');
+      _navigateToAdminSection(index, '/admin/events');
+      return;
+    }
+    if (index == 3) {
+      _navigateToAdminSection(index, AppRoutes.adminReports);
       return;
     }
     if (index == 4) {
-      // Open profile screen
-      Navigator.of(context).pushNamed(AppRoutes.profile);
+      _navigateToAdminSection(index, AppRoutes.profile);
       return;
     }
-    if (index == 0) {
-      // already on admin dashboard
-      return;
-    }
-    // For reports or other tabs, do nothing for now
   }
 
   @override
@@ -314,12 +326,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                 icon: const Icon(Icons.refresh, color: Colors.black),
                 onPressed: _loadData,
               ),
-              IconButton(
-                icon: const Icon(Icons.notifications_outlined, color: Colors.black),
-                onPressed: () {
-                  Navigator.pushNamed(context, AppRoutes.notifications);
-                },
-              ),
+              NotificationBellAdmin(iconColor: Colors.black),
             ],
           ),
           body: isLoading && stats == null
@@ -440,14 +447,14 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                             icon: Icons.people_outline,
                             label: 'Quản lý Người dùng',
                             onTap: () {
-                              Navigator.of(context).pushNamed('/admin/users');
+                              _navigateToAdminSection(1, '/admin/users');
                             },
                           ),
                           QuickActionButton(
                             icon: Icons.event_outlined,
                             label: 'Quản lý Sự kiện',
                             onTap: () {
-                              Navigator.of(context).pushNamed('/admin/events');
+                              _navigateToAdminSection(2, '/admin/events');
                             },
                           ),
                           QuickActionButton(
@@ -474,11 +481,13 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                     ],
                   ),
                 ),
-          bottomNavigationBar: AppNavBar(
-            currentIndex: _selectedIndex,
-            onTap: _onNavigationTapped,
-            roleOverride: 'system_admin',
-          ),
+          bottomNavigationBar: widget.showBottomNav
+              ? AppNavBar(
+                  currentIndex: _selectedIndex,
+                  onTap: _onNavigationTapped,
+                  roleOverride: 'system_admin',
+                )
+              : null,
         );
       },
     );

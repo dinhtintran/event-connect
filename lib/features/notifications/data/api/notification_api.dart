@@ -33,7 +33,7 @@ class NotificationApi {
     
     try {
       final res = await dio.get(
-        '/api/notifications/notifications/',
+        'api/notifications/notifications/',
         queryParameters: queryParams,
         options: Options(
           headers: {'Authorization': 'Bearer $accessToken'},
@@ -61,11 +61,11 @@ class NotificationApi {
   Future<Map<String, dynamic>> getUnreadCount({
     required String accessToken,
   }) async {
-    _dbg('GET /api/notifications/notifications/unread_count/');
+    _dbg('GET /api/notifications/notifications/unread-count/');
     
     try {
       final res = await dio.get(
-        '/api/notifications/notifications/unread_count/',
+        'api/notifications/notifications/unread-count/',
         options: Options(
           headers: {'Authorization': 'Bearer $accessToken'},
         ),
@@ -97,7 +97,7 @@ class NotificationApi {
     
     try {
       final res = await dio.post(
-        '/api/notifications/notifications/$notificationId/read/',
+        'api/notifications/notifications/$notificationId/read/',
         options: Options(
           headers: {'Authorization': 'Bearer $accessToken'},
         ),
@@ -128,7 +128,7 @@ class NotificationApi {
     
     try {
       final res = await dio.post(
-        '/api/notifications/notifications/mark_all_read/',
+        'api/notifications/notifications/mark_all_read/',
         options: Options(
           headers: {'Authorization': 'Bearer $accessToken'},
         ),

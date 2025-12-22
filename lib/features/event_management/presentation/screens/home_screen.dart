@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:event_connect/features/event_management/domain/models/event.dart';
+import 'package:event_connect/features/event_management/presentation/widgets/notification_bell_student.dart';
 import 'package:event_connect/features/event_management/domain/services/event_service.dart';
 import 'package:event_connect/features/event_management/presentation/widgets/category_chip.dart';
 import 'package:event_connect/features/event_management/presentation/widgets/event_card_large.dart';
@@ -187,19 +188,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           Row(
             children: [
-              GestureDetector(
-                onTap: () {
-                  Navigator.pushNamed(context, AppRoutes.notifications);
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.notifications_outlined, size: 24),
-                ),
-              ),
+              NotificationBellStudent(iconColor: Color(0xFF120D26)),
               const SizedBox(width: 12),
               GestureDetector(
                 onTap: () {
