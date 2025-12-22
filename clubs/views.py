@@ -1,3 +1,5 @@
+import logging
+
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -10,6 +12,10 @@ from .serializers import ClubSerializer, ClubDetailSerializer, ClubCreateSeriali
 from event_management.permissions import IsSystemAdmin, IsClubAdmin
 from event_management.models import Event
 from event_management.serializers import EventCreateUpdateSerializer, EventListSerializer
+from .services.statistics import ClubStatisticsService
+
+
+logger = logging.getLogger(__name__)
 
 
 class StandardResultsSetPagination(PageNumberPagination):
@@ -223,3 +229,114 @@ class ClubViewSet(viewsets.ModelViewSet):
                 'name': club.name
             }
         })
+
+    @action(detail=True, methods=['get'], permission_classes=[permissions.IsAuthenticated], url_path='statistics')
+    def statistics(self, request, id=None):
+        """Return aggregated statistics for a club dashboard."""
+        club = self.get_object()
+        if not self._has_statistics_access(request.user, club):
+            return Response({
+                'detail': 'You do not have permission to view this club statistics.',
+                'error_code': 'club_statistics_forbidden'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            range_days = self._get_int_param(request, 'range_days', default=90, min_value=30, max_value=180)
+            limit_feedback = self._get_int_param(request, 'limit_feedback', default=3, min_value=1, max_value=10)
+            limit_highlights = self._get_int_param(request, 'limit_highlights', default=6, min_value=1, max_value=12)
+        except ValueError as exc:
+            return Response({
+                'detail': str(exc),
+                'error_code': 'invalid_statistics_param'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            service = ClubStatisticsService(
+                club,
+                request=request,
+                range_days=range_days,
+                limit_feedback=limit_feedback,
+                limit_highlights=limit_highlights,
+            )
+            payload = service.build_payload()
+        except Exception:
+            logger.exception('Club statistics generation failed for club_id=%s', club.id)
+            return Response({
+                'detail': 'Unable to generate statistics right now, please retry later.',
+                'error_code': 'statistics_generation_failed'
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        response = Response(payload)
+        response['Cache-Control'] = 'private, max-age=300'
+        return response
+
+    @action(
+        detail=True,
+        methods=['get'],
+        permission_classes=[permissions.IsAuthenticated],
+        url_path='statistics/raw-events'
+    )
+    def statistics_raw_events(self, request, id=None):
+        club = self.get_object()
+        if not self._has_statistics_access(request.user, club):
+            return Response({
+                'detail': 'You do not have permission to view raw event statistics.',
+                'error_code': 'club_statistics_forbidden'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            range_days = self._get_int_param(request, 'range_days', default=90, min_value=30, max_value=180)
+            limit_events = self._get_int_param(request, 'limit', default=50, min_value=1, max_value=200)
+        except ValueError as exc:
+            return Response({
+                'detail': str(exc),
+                'error_code': 'invalid_statistics_param'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            service = ClubStatisticsService(club, request=request, range_days=range_days)
+            payload = service.build_raw_events(limit=limit_events)
+        except Exception:
+            logger.exception('Raw statistics export failed for club_id=%s', club.id)
+            return Response({
+                'detail': 'Unable to load raw event data right now, please retry later.',
+                'error_code': 'statistics_generation_failed'
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        response = Response({'results': payload, 'count': len(payload)})
+        response['Cache-Control'] = 'private, max-age=300'
+        return response
+
+    # ------------------------------------------------------------------
+    def _get_int_param(self, request, name, *, default, min_value, max_value):
+        raw_value = request.query_params.get(name)
+        if raw_value is None:
+            return default
+        try:
+            value = int(raw_value)
+        except (TypeError, ValueError):
+            raise ValueError(f"{name} must be an integer")
+        if value < min_value or value > max_value:
+            raise ValueError(f"{name} must be between {min_value} and {max_value}")
+        return value
+
+    def _has_statistics_access(self, user, club):
+        if not user or not user.is_authenticated:
+            return False
+        if user.role == 'system_admin' or user.is_superuser:
+            return True
+
+        try:
+            membership = ClubMembership.objects.get(user=user, club=club)
+            if membership.role in ['president', 'admin']:
+                return True
+        except ClubMembership.DoesNotExist:
+            pass
+
+        if user == club.president or club.admins.filter(id=user.id).exists():
+            return True
+
+        if user.role == 'club_admin':
+            return ClubMembership.objects.filter(user=user, club=club).exists()
+
+        return False

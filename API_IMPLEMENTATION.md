@@ -106,6 +106,41 @@ http://127.0.0.1:8000/api
 
 ---
 
+## 📈 CLUB STATISTICS APIs
+
+### GET /clubs/{id}/statistics/
+**Status**: ✅ Implemented  
+**File**: `clubs/views.py` - `ClubViewSet.statistics()`  
+**Permissions**: Club president/admin, club creator, or system admin  
+**Caching**: `Cache-Control: private, max-age=300`  
+**Query Parameters**:
+- `range_days` (30–180, default 90)
+- `limit_feedback` (1–10, default 3)
+- `limit_highlights` (1–12, default 6)
+
+**Response**: Consolidated payload with overview metrics, change deltas, six-month attendance series, academic distribution, curated feedback samples, highlights, and `is_empty` flag. When a club has no events, the endpoint still returns zeroed metrics so the frontend can show an empty state.
+
+**Error Codes**:
+- `club_statistics_forbidden` for unauthorized users
+- `invalid_statistics_param` for bad query parameters
+- `statistics_generation_failed` for transient back-end issues
+
+### GET /clubs/{id}/statistics/raw-events/
+**Status**: ✅ Implemented  
+**File**: `clubs/views.py` - `ClubViewSet.statistics_raw_events()`  
+**Permissions**: Same as main statistics endpoint  
+**Query Parameters**:
+- `range_days` (30–180, default 90)
+- `limit` (1–200, default 50)
+
+**Response**: Lightweight list of events (id, title, start/end timestamps, status, category, rating stats, attended/registered counts, poster URL) used for debugging and advanced charting.
+
+**Security Notes**:
+- Permission helper enforces membership checks before any caching.
+- All payloads add machine-readable `error_code` values for predictable frontend handling.
+
+---
+
 ## 📝 EVENT CREATION APIs
 
 ### 13. POST /clubs/{club_id}/events/
@@ -181,6 +216,35 @@ http://127.0.0.1:8000/api
 **File**: `notifications/views.py` - `admin_users()`  
 **Permissions**: System Admin only  
 **Query Parameters**: `role`, `search`, `page`, `page_size`
+
+---
+
+## 📱 ADMIN REPORTS (Mobile Dashboard)
+
+All reporting endpoints live under `/api/admin/reports/` and are protected by role-based scope:
+
+| Endpoint | Description | Notes |
+|----------|-------------|-------|
+| `GET /overview/` | High-level KPIs (events, users, revenue proxy, complaints) | Accepts `range`, `from`, `to`, `facultyId`, `eventType` |
+| `GET /users/metrics/` | Signup + engagement stats with sparkline + top faculties | Includes DAU/WAU, conversion, inactive users |
+| `GET /users/list/` | Paginated drill-down of users | Supports `status`, `search`, `page`, `pageSize` |
+| `GET /clubs/metrics/` | Club activity, growth, revenue contribution | Returns comparison dataset for charts |
+| `GET /clubs/list/` | Tabular club health view | Flags `needsSupport`, `complianceWarning`; sortable via `sort` |
+| `GET /events/metrics/` | Approval SLA, cancellations, fill rate, satisfaction | Uses real registration + feedback data |
+| `GET /events/timeline/` | Live/upcoming feed with risk score + headcount | Filterable via shared range filters |
+| `GET /alerts/` | Consolidated risk cards (pending approvals, complaints, cancellations) | Query by `severity` or `type` |
+| `POST /export/` | Kick off export job with `sections[]` payload | Returns job descriptor (202) |
+| `GET /export/{jobId}/` | Poll export job status/result | Includes serialized payload for now |
+| `GET /config` / `PUT /config` | Persist dashboard layout + default filters per admin | Stored in `ReportDashboardConfig` |
+| `GET /audit/` | Compliance log sourced from `ActivityLog` | Filters by `actorId`, `actionType`, range |
+
+**Shared contract**:
+- Every response wraps data with `meta` containing `range`, actual time window, `lastUpdated`, `degraded`, `cacheVersion`, and `scope` descriptor (global vs faculty-scoped).
+- Filters: `range`, `from`, `to`, `facultyId`, `departmentId` (ignored but reported), `clubIds`, `eventType`, `status`, `page`, `pageSize` depending on endpoint.
+- Scope enforcement: non-system admins are auto-restricted to their faculty; unsupported filters mark `degraded=true` with `notes.ignoredFilters`.
+- Export jobs persist in `report_export_jobs`, configs in `report_dashboard_configs`, both created via the new `admin_reports` app.
+
+See `admin_reports/services.py` for the aggregation logic and `admin_reports/tests/test_admin_reports_api.py` for live contract tests.
 
 ---
 
@@ -397,6 +461,14 @@ Authorization: Bearer {access_token}
 
 ### 1. Automatic Slug Generation
 Events and clubs automatically get URL-friendly slugs from their names.
+
+### 2. Club Statistics QA Fixture
+Load `fixtures/club_statistics_sample.json` to seed a demo club that covers six months of historical events:
+
+```bash
+python manage.py loaddata fixtures/club_statistics_sample.json
+```
+The fixture provisions a club admin (`stats-admin` / `DemoPass123!`) plus sample members, events, registrations, and feedback so the dashboard can be tested without manual data entry.
 
 ### 2. QR Code Generation
 Each registration gets a unique QR code: `EVT-{event_id}-USR-{user_id}-{random}`

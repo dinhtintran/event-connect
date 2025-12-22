@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'clubs',
     'event_management',
     'notifications',
+    'admin_reports',
     # CORS
     'corsheaders',
     # Third-party
@@ -103,6 +104,7 @@ DATABASES = {
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',  # enable debug/TestClient auth
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
