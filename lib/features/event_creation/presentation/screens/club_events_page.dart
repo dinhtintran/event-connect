@@ -52,10 +52,9 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
   }
   
   Future<void> _loadClubIdAndEvents() async {
-    // Get club ID from user profile
     final authService = Provider.of<AuthService>(context, listen: false);
     final user = authService.user;
-    
+
     if (user == null) {
       setState(() {
         _errorMessage = 'Vui lòng đăng nhập';
@@ -63,47 +62,49 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
       });
       return;
     }
-    
-    // Try to get club ID (similar to club_home_page logic)
-    String? clubId;
-    if (user.profile.clubName != null && user.profile.clubName!.isNotEmpty) {
-      try {
-        final clubApi = ClubAdminApi();
-        final clubsResult = await clubApi.clubApi.getAllClubs();
-        if (clubsResult['status'] == 200) {
-          final clubs = clubsResult['body'];
-          if (clubs is Map && clubs.containsKey('results')) {
-            final results = clubs['results'] as List;
-            try {
-              final matchingClub = results.firstWhere(
-                (c) => c['name'] == user.profile.clubName,
-              );
-              clubId = matchingClub['id']?.toString();
-            } catch (e) {
-              debugPrint('Club not found by name');
-            }
-          } else if (clubs is List) {
-            try {
-              final matchingClub = clubs.firstWhere(
-                (c) => c['name'] == user.profile.clubName,
-              );
-              clubId = matchingClub['id']?.toString();
-            } catch (e) {
-              debugPrint('Club not found by name');
-            }
-          }
-        }
-      } catch (e) {
-        debugPrint('Error fetching clubs: $e');
-      }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final resolvedId = await _repository.getCurrentClubId();
+      if (!mounted) return;
+
+      setState(() {
+        _clubId = resolvedId;
+      });
+
+      await _loadEvents();
+    } on ClubNotAssignedException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.message;
+        _isLoading = false;
+      });
+    } on ClubAssignmentException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.message;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Không thể tải thông tin CLB: $e';
+        _isLoading = false;
+      });
     }
-    
-    _clubId = clubId ?? '1'; // Fallback
-    _loadEvents();
   }
   
   Future<void> _loadEvents() async {
-    if (_clubId == null) return;
+    if (_clubId == null) {
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
     
     setState(() {
       _isLoading = true;
@@ -527,13 +528,19 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
     // Navigation based on index:
     // 0 -> Trang Chủ
     // 1 -> Sự kiện (current page)
-    // 2 -> Thư
-    // 3 -> Thống Kê
+    // 2 -> Thư (Báo cáo sự kiện - tổng quan)
+    // 3 -> Thống Kê (Thống kê chi tiết)
     // 4 -> Hồ Sơ
 
     if (index == 0) {
       // Go back to Club Home Page
       Navigator.push(context, _createSlideBackRoute(const ClubHomePage()));
+    } else if (index == 2) {
+      // Navigate to Statistics/Report page (overview)
+      Navigator.pushNamed(context, AppRoutes.clubStatistics);
+    } else if (index == 3) {
+      // Navigate to Statistics Detail page
+      Navigator.pushNamed(context, AppRoutes.clubStatisticsDetail);
     } else if (index == 4) {
       // Navigate to Profile
       Navigator.pushNamed(context, AppRoutes.profile);

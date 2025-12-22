@@ -61,6 +61,18 @@ Grid 2x2 với các actions:
 - Báo cáo (Reports)
 - Hồ Sơ (Profile)
 
+### 4. Báo cáo & Thống kê (Admin Reports Screen)
+- Đã thêm màn hình `AdminReportsScreen` chuyên hiển thị thống kê hệ thống cho admin trường.
+- Bao gồm: bộ lọc thời gian (hôm nay/7 ngày/30 ngày/quý), KPI tổng quan (sự kiện, người dùng, CLB, lượt đăng ký), biểu đồ trạng thái sự kiện, hoạt động trong tuần, bảng xếp hạng sự kiện/CLB, placeholder cảnh báo SLA.
+- Hỗ trợ kéo để làm mới (pull-to-refresh), hiển thị progress khi đổi bộ lọc, banner lỗi với nút "Thử lại".
+- Truy cập từ tab thứ 4 của `AppNavBar` hoặc route `AppRoutes.adminReports`.
+
+### 5. Upload poster khi tạo/chỉnh sửa sự kiện
+- Các màn `CreateEventScreen` và `EditEventScreen` giờ có khối **Poster / Banner** mới sử dụng `image_picker`.
+- Người tạo sự kiện có thể bấm "Chọn ảnh" để mở thư viện, ảnh được preview ngay trong form và sẽ kèm theo payload Multipart (`poster` ImageField) khi submit.
+- Ở màn chỉnh sửa: nếu sự kiện đã có poster, ảnh hiện tại sẽ hiển thị với tùy chọn "Đổi ảnh" hoặc "Xóa ảnh" (gửi `poster=null` để backend gỡ file cũ).
+- Không cần backend mock: payload vẫn gọi API `/api/clubs/{clubId}/events/` hoặc `/api/events/{id}/` như trước, chỉ khác là dữ liệu giờ có thể là JSON hoặc `FormData` tùy việc đính kèm ảnh.
+
 ## Cấu trúc thư mục
 
 ```

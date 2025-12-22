@@ -13,6 +13,8 @@ export 'domain/models/club.dart';
 // Presentation
 export 'presentation/screens/club_home_page.dart';
 export 'presentation/screens/club_events_page.dart';
+export 'presentation/screens/club_statistics_screen.dart';
+export 'presentation/screens/club_statistics_detail_screen.dart';
 export 'presentation/screens/create_event_screen.dart';
 export 'presentation/screens/edit_event_screen.dart';
 export 'presentation/screens/event_participants_screen.dart';

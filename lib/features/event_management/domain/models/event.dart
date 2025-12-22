@@ -26,6 +26,8 @@ class Event {
   final int checkedInCount;     // Đã check-in (đang trong event)
   final int attendedCount;      // Đã hoàn thành tham dự
   final int totalParticipants;  // Tổng số người (trừ cancelled)
+  final double averageRating;   // Điểm đánh giá trung bình
+  final int ratingCount;        // Số lượng đánh giá
   
   // NEW: Saved events feature
   final bool isSaved;           // Người dùng đã lưu sự kiện này chưa
@@ -60,6 +62,8 @@ class Event {
     this.checkedInCount = 0,
     this.attendedCount = 0,
     this.totalParticipants = 0,
+    this.averageRating = 0,
+    this.ratingCount = 0,
     
     // NEW: Saved events (with defaults)
     this.isSaved = false,
@@ -166,6 +170,13 @@ class Event {
       return DateTime.tryParse(raw.toString());
     }
 
+    double parseDouble(dynamic raw) {
+      if (raw == null) return 0;
+      if (raw is double) return raw;
+      if (raw is int) return raw.toDouble();
+      return double.tryParse(raw.toString()) ?? 0;
+    }
+
     // Parse club data from nested object
     final clubData = json['club'];
     String clubName = '';
@@ -201,6 +212,8 @@ class Event {
       checkedInCount: parseInt(json['checked_in_count']),
       attendedCount: parseInt(json['attended_count']),
       totalParticipants: parseInt(json['total_participants']),
+      averageRating: parseDouble(json['average_rating']),
+      ratingCount: parseInt(json['rating_count']),
       
       // NEW: Saved events feature
       isSaved: json['is_saved'] as bool? ?? false,
@@ -232,6 +245,8 @@ class Event {
       'poster_url': posterUrl,
       'capacity': capacity,
       'participantCount': participantCount,
+      'average_rating': averageRating,
+      'rating_count': ratingCount,
       'is_saved': isSaved,
       'saved_at': savedAt?.toIso8601String(),
       'status': status,

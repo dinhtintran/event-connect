@@ -25,6 +25,7 @@ import 'package:event_connect/features/admin_dashboard/domain/services/admin_ser
 import 'package:event_connect/features/admin_dashboard/presentation/screens/admin_home_screen.dart';
 import 'package:event_connect/features/admin_dashboard/presentation/screens/admin_user_management_screen.dart';
 import 'package:event_connect/features/admin_dashboard/presentation/screens/admin_event_management_screen.dart';
+import 'package:event_connect/features/admin_dashboard/presentation/screens/admin_reports_screen.dart';
 
 void main() {
   runApp(const EventConnectApp());
@@ -100,9 +101,12 @@ class EventConnectApp extends StatelessWidget {
           AppRoutes.home: (_) => const MainScreen(),
           AppRoutes.clubHome: (_) => const ClubHomePage(),
           AppRoutes.clubEvents: (_) => const ClubEventsPage(),
+          AppRoutes.clubStatistics: (_) => const ClubStatisticsScreen(),
+          AppRoutes.clubStatisticsDetail: (_) => const ClubStatisticsDetailScreen(),
           AppRoutes.approval: (_) => const ApprovalScreen(), // Deprecated: kept for backward compatibility
           AppRoutes.eventManagement: (_) => const EventManagementScreen(),
           AppRoutes.admin: (_) => const AdminHomeScreen(),
+          AppRoutes.adminReports: (_) => const AdminReportsScreen(),
           AppRoutes.profile: (_) => const ProfileScreen(),
           AppRoutes.notifications: (_) => const NotificationsScreen(),
           '/admin/users': (_) => const AdminUserManagementScreen(),
