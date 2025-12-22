@@ -29,6 +29,7 @@ class _ClubHomePageState extends State<ClubHomePage> {
   int _unreadCount = 0;
   bool _isLoading = true;
   String? _errorMessage;
+  String? _clubId;
   
   // Repository
   late final ClubAdminRepository _repository;
@@ -59,47 +60,24 @@ class _ClubHomePageState extends State<ClubHomePage> {
         return;
       }
       
-      // Try to get club ID from user profile or fetch clubs list
-      String? clubId;
-      String? clubName;
-      
-      // Check if user has club info in profile
-      if (user.profile.clubName != null && user.profile.clubName!.isNotEmpty) {
-        clubName = user.profile.clubName;
-        // Try to find club ID by fetching clubs list
-        try {
-          final clubApi = ClubAdminApi();
-          final clubsResult = await clubApi.clubApi.getAllClubs();
-          if (clubsResult['status'] == 200) {
-            final clubs = clubsResult['body'];
-            if (clubs is Map && clubs.containsKey('results')) {
-              final results = clubs['results'] as List;
-              try {
-                final matchingClub = results.firstWhere(
-                  (c) => c['name'] == clubName,
-                );
-                clubId = matchingClub['id']?.toString();
-              } catch (e) {
-                // Club not found by name
-              }
-            } else if (clubs is List) {
-              try {
-                final matchingClub = clubs.firstWhere(
-                  (c) => c['name'] == clubName,
-                );
-                clubId = matchingClub['id']?.toString();
-              } catch (e) {
-                // Club not found by name
-              }
-            }
-          }
-        } catch (e) {
-          debugPrint('Error fetching clubs: $e');
-        }
+      String clubId;
+      try {
+        clubId = await _repository.getCurrentClubId();
+      } on ClubNotAssignedException catch (e) {
+        setState(() {
+          _errorMessage = e.message;
+          _isLoading = false;
+        });
+        return;
+      } on ClubAssignmentException catch (e) {
+        setState(() {
+          _errorMessage = e.message;
+          _isLoading = false;
+        });
+        return;
       }
-      
-      // Fallback: use default club ID if not found (for testing)
-      clubId = clubId ?? '1';
+
+      _clubId = clubId;
       
       // Fetch data sequentially with error handling for each
       List<Event> recentEvents = [];
@@ -530,6 +508,7 @@ class _ClubHomePageState extends State<ClubHomePage> {
                                     : event.registrationCount,
                                 capacity: event.capacity,
                                 isLive: _isEventLive(event),
+                                posterUrl: event.posterUrl,
                                 onManage: () => _navigateToParticipants(event),
                                 onEdit: () => _navigateToEditEvent(event),
                               ),

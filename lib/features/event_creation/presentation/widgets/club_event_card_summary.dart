@@ -6,6 +6,7 @@ class ClubEventCardSummary extends StatelessWidget {
   final int registered;
   final int capacity;
   final bool isLive;
+  final String posterUrl;
   final VoidCallback onManage; // View participants
   final VoidCallback onEdit;   // Edit event
 
@@ -16,6 +17,7 @@ class ClubEventCardSummary extends StatelessWidget {
     required this.registered,
     required this.capacity,
     required this.isLive,
+    required this.posterUrl,
     required this.onManage,
     required this.onEdit,
   });
@@ -31,10 +33,22 @@ class ClubEventCardSummary extends StatelessWidget {
           BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2)),
         ],
       ),
-      padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+            child: SizedBox(
+              height: 140,
+              width: double.infinity,
+              child: _buildPoster(),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
           // Title & Status
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -110,8 +124,34 @@ class ClubEventCardSummary extends StatelessWidget {
               ),
             ],
           ),
+              ],
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPoster() {
+    if (posterUrl.isEmpty) {
+      return Container(color: Colors.grey.shade200);
+    }
+
+    final isNetwork = posterUrl.startsWith('http');
+    final fallback = Container(color: Colors.grey.shade300);
+
+    if (isNetwork) {
+      return Image.network(
+        posterUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => fallback,
+      );
+    }
+
+    return Image.asset(
+      posterUrl,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => fallback,
     );
   }
 }

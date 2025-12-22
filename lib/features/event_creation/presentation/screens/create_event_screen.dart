@@ -1,4 +1,9 @@
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:event_connect/features/authentication/authentication.dart';
@@ -38,6 +43,9 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   bool _isSubmitting = false;
   
   String? _clubId;
+  final ImagePicker _imagePicker = ImagePicker();
+  XFile? _posterFile;
+  Uint8List? _posterBytes;
   
   // Categories from backend spec
   final List<Map<String, String>> _categories = [
@@ -67,47 +75,35 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       return;
     }
     
-    // Get club ID from user profile (same logic as club_events_page)
     final authService = Provider.of<AuthService>(context, listen: false);
     final user = authService.user;
-    
     if (user == null) return;
-    
+
     String? clubId;
-    if (user.profile.clubName != null && user.profile.clubName!.isNotEmpty) {
-      try {
-        final clubApi = ClubAdminApi();
-        final clubsResult = await clubApi.clubApi.getAllClubs();
-        if (clubsResult['status'] == 200) {
-          final clubs = clubsResult['body'];
-          if (clubs is Map && clubs.containsKey('results')) {
-            final results = clubs['results'] as List;
-            try {
-              final matchingClub = results.firstWhere(
-                (c) => c['name'] == user.profile.clubName,
-              );
-              clubId = matchingClub['id']?.toString();
-            } catch (e) {
-              debugPrint('Club not found by name');
-            }
-          } else if (clubs is List) {
-            try {
-              final matchingClub = clubs.firstWhere(
-                (c) => c['name'] == user.profile.clubName,
-              );
-              clubId = matchingClub['id']?.toString();
-            } catch (e) {
-              debugPrint('Club not found by name');
-            }
-          }
-        }
-      } catch (e) {
-        debugPrint('Error fetching clubs: $e');
-      }
+    try {
+      clubId = await _repository.getCurrentClubId();
+    } on ClubNotAssignedException catch (e) {
+      debugPrint('Club not assigned: ${e.message}');
+      clubId = null;
+    } on ClubAssignmentException catch (e) {
+      debugPrint('Club assignment error: ${e.message}');
+      clubId = null;
+    } catch (e) {
+      debugPrint('getCurrentClubId failed: $e');
+      clubId = null;
     }
-    
+
+    if (!mounted) return;
+
+    if (clubId == null) {
+      setState(() {
+        _clubId = null;
+      });
+      return;
+    }
+
     setState(() {
-      _clubId = clubId ?? '1'; // Fallback
+      _clubId = clubId;
     });
   }
   
@@ -187,6 +183,126 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         }
       });
     }
+  }
+  
+  Future<void> _pickPoster() async {
+    if (_isSubmitting) return;
+    try {
+      final XFile? picked = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        imageQuality: 85,
+      );
+      if (picked == null) return;
+      final bytes = await picked.readAsBytes();
+      if (!mounted) return;
+      setState(() {
+        _posterFile = picked;
+        _posterBytes = bytes;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Không thể chọn ảnh: $error')),
+      );
+    }
+  }
+
+  void _clearPoster() {
+    if (_isSubmitting) return;
+    setState(() {
+      _posterFile = null;
+      _posterBytes = null;
+    });
+  }
+
+  Future<dynamic> _buildEventPayload(Map<String, dynamic> eventData) async {
+    if (_posterFile == null || _posterBytes == null) {
+      return eventData;
+    }
+    final fileName = _posterFile?.name ?? 'poster.jpg';
+    if (kIsWeb) {
+      return FormData.fromMap({
+        ...eventData,
+        'poster': MultipartFile.fromBytes(
+          _posterBytes!,
+          filename: fileName,
+        ),
+      });
+    }
+    return FormData.fromMap({
+      ...eventData,
+      'poster': await MultipartFile.fromFile(
+        _posterFile!.path,
+        filename: fileName,
+      ),
+    });
+  }
+
+  Widget _buildPosterPicker() {
+    final hasImage = _posterBytes != null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Poster / Banner',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            TextButton.icon(
+              onPressed: _isSubmitting ? null : _pickPoster,
+              icon: const Icon(Icons.photo_library_outlined),
+              label: Text(hasImage ? 'Đổi ảnh' : 'Chọn ảnh'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        GestureDetector(
+          onTap: _isSubmitting ? null : _pickPoster,
+          child: Container(
+            height: 180,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: hasImage ? Colors.indigo : Colors.grey.shade300,
+                width: hasImage ? 2 : 1,
+              ),
+              color: Colors.grey.shade50,
+            ),
+            child: hasImage
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(11),
+                    child: Image.memory(
+                      _posterBytes!,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                    ),
+                  )
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Icon(Icons.add_photo_alternate_outlined, size: 40, color: Colors.grey),
+                      SizedBox(height: 8),
+                      Text('Thêm poster để sự kiện nổi bật hơn', style: TextStyle(color: Colors.grey)),
+                    ],
+                  ),
+          ),
+        ),
+        if (hasImage)
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: _isSubmitting ? null : _clearPoster,
+              icon: const Icon(Icons.delete_forever_outlined),
+              label: const Text('Xóa ảnh'),
+              style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+            ),
+          ),
+      ],
+    );
   }
   
   DateTime? _combineDateTime(DateTime? date, TimeOfDay? time) {
@@ -270,7 +386,8 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       eventData['requires_approval'] = _requiresApproval;
       
       // Create event via API
-      final createdEvent = await _repository.createEvent(_clubId!, eventData);
+      final payload = await _buildEventPayload(eventData);
+      final createdEvent = await _repository.createEvent(_clubId!, payload);
       
       if (!mounted) return;
       
@@ -414,6 +531,9 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                 return null;
               },
             ),
+            const SizedBox(height: 16),
+
+            _buildPosterPicker(),
             const SizedBox(height: 16),
             
             // Location

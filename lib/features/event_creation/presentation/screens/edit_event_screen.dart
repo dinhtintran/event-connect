@@ -1,4 +1,9 @@
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:event_connect/features/event_creation/data/repositories/club_admin_repository.dart';
 import 'package:event_connect/features/event_creation/data/api/club_admin_api.dart';
@@ -32,6 +37,11 @@ class _EditEventScreenState extends State<EditEventScreen> {
   TimeOfDay? _endTime;
   late bool _isFeatured;
   bool _isSubmitting = false;
+  final ImagePicker _imagePicker = ImagePicker();
+  XFile? _posterFile;
+  Uint8List? _posterBytes;
+  String? _posterPreviewUrl;
+  bool _removeExistingPoster = false;
   
   // Categories from backend spec
   final List<Map<String, String>> _categories = [
@@ -62,6 +72,9 @@ class _EditEventScreenState extends State<EditEventScreen> {
     final categoryExists = _categories.any((cat) => cat['value'] == widget.event.category);
     _selectedCategory = categoryExists ? widget.event.category : 'academic';
     _isFeatured = widget.event.isFeatured;
+    if (widget.event.posterUrl.isNotEmpty) {
+      _posterPreviewUrl = widget.event.posterUrl;
+    }
     
     // Parse start date/time
     _startDate = widget.event.startAt;
@@ -144,6 +157,153 @@ class _EditEventScreenState extends State<EditEventScreen> {
     }
   }
   
+  Future<void> _pickPoster() async {
+    if (_isSubmitting) return;
+    try {
+      final picked = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        imageQuality: 85,
+      );
+      if (picked == null) return;
+      final bytes = await picked.readAsBytes();
+      if (!mounted) return;
+      setState(() {
+        _posterFile = picked;
+        _posterBytes = bytes;
+        _posterPreviewUrl = null;
+        _removeExistingPoster = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Không thể chọn ảnh: $error')),
+      );
+    }
+  }
+
+  void _clearPoster() {
+    if (_isSubmitting) return;
+    setState(() {
+      if (_posterPreviewUrl != null) {
+        _removeExistingPoster = true;
+      }
+      _posterFile = null;
+      _posterBytes = null;
+      _posterPreviewUrl = null;
+    });
+  }
+
+  Future<dynamic> _buildEventPayload(Map<String, dynamic> eventData) async {
+    if (_posterFile != null && _posterBytes != null) {
+      final fileName = _posterFile?.name ?? 'poster.jpg';
+      if (kIsWeb) {
+        return FormData.fromMap({
+          ...eventData,
+          'poster': MultipartFile.fromBytes(
+            _posterBytes!,
+            filename: fileName,
+          ),
+        });
+      }
+      return FormData.fromMap({
+        ...eventData,
+        'poster': await MultipartFile.fromFile(
+          _posterFile!.path,
+          filename: fileName,
+        ),
+      });
+    }
+    if (_removeExistingPoster) {
+      eventData['poster'] = null; // Backend interprets null to clear current poster
+    }
+    return eventData;
+  }
+
+  Widget _buildPosterPicker() {
+    final bool hasFile = _posterBytes != null;
+    final bool hasExisting = !hasFile && (_posterPreviewUrl?.isNotEmpty ?? false);
+    final bool hasImage = hasFile || hasExisting;
+
+    Widget child;
+    if (hasFile && _posterBytes != null) {
+      child = ClipRRect(
+        borderRadius: BorderRadius.circular(11),
+        child: Image.memory(
+          _posterBytes!,
+          fit: BoxFit.cover,
+          width: double.infinity,
+        ),
+      );
+    } else if (hasExisting && _posterPreviewUrl != null) {
+      child = ClipRRect(
+        borderRadius: BorderRadius.circular(11),
+        child: Image.network(
+          _posterPreviewUrl!,
+          fit: BoxFit.cover,
+          width: double.infinity,
+          errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image_outlined)),
+        ),
+      );
+    } else {
+      child = Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: const [
+          Icon(Icons.add_photo_alternate_outlined, size: 40, color: Colors.grey),
+          SizedBox(height: 8),
+          Text('Thêm poster để cập nhật ảnh sự kiện', style: TextStyle(color: Colors.grey)),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Poster / Banner',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            TextButton.icon(
+              onPressed: _isSubmitting ? null : _pickPoster,
+              icon: const Icon(Icons.photo_library_outlined),
+              label: Text(hasImage ? 'Đổi ảnh' : 'Chọn ảnh'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        GestureDetector(
+          onTap: _isSubmitting ? null : _pickPoster,
+          child: Container(
+            height: 180,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: hasImage ? Colors.indigo : Colors.grey.shade300,
+                width: hasImage ? 2 : 1,
+              ),
+              color: Colors.grey.shade50,
+            ),
+            child: child,
+          ),
+        ),
+        if (hasImage)
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: _isSubmitting ? null : _clearPoster,
+              icon: const Icon(Icons.delete_forever_outlined),
+              label: const Text('Xóa ảnh'),
+              style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+            ),
+          ),
+      ],
+    );
+  }
+  
   DateTime? _combineDateTime(DateTime? date, TimeOfDay? time) {
     if (date == null || time == null) return null;
     return DateTime(date.year, date.month, date.day, time.hour, time.minute);
@@ -201,6 +361,13 @@ class _EditEventScreenState extends State<EditEventScreen> {
         'capacity': int.parse(_capacityController.text.trim()),
         'is_featured': _isFeatured,
       };
+
+      // Backend requires club reference on PUT, even if it doesn't change
+      final existingClubId = widget.event.clubId;
+      if (existingClubId != null && existingClubId.isNotEmpty) {
+        final parsedId = int.tryParse(existingClubId);
+        eventData['club'] = parsedId ?? existingClubId;
+      }
       
       // Optional fields
       if (_locationDetailController.text.isNotEmpty) {
@@ -208,7 +375,8 @@ class _EditEventScreenState extends State<EditEventScreen> {
       }
       
       // Update event via API
-      final updatedEvent = await _repository.updateEvent(widget.event.id, eventData);
+      final payload = await _buildEventPayload(eventData);
+      final updatedEvent = await _repository.updateEvent(widget.event.id, payload);
       
       if (!mounted) return;
       
@@ -292,6 +460,9 @@ class _EditEventScreenState extends State<EditEventScreen> {
               },
               maxLength: 2000,
             ),
+            const SizedBox(height: 16),
+
+            _buildPosterPicker(),
             const SizedBox(height: 16),
             
             // Category

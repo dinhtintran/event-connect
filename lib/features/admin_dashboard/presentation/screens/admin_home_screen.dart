@@ -265,7 +265,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     // 0 -> Dashboard (stay on admin home)
     // 1 -> User Management
     // 2 -> Event Management
-    // 3 -> Reports (not implemented)
+    // 3 -> Reports
     // 4 -> Profile
     if (index == 1) {
       // Open user management screen
@@ -277,6 +277,10 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       Navigator.of(context).pushNamed('/admin/events');
       return;
     }
+    if (index == 3) {
+      Navigator.of(context).pushNamed(AppRoutes.adminReports);
+      return;
+    }
     if (index == 4) {
       // Open profile screen
       Navigator.of(context).pushNamed(AppRoutes.profile);
@@ -286,7 +290,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       // already on admin dashboard
       return;
     }
-    // For reports or other tabs, do nothing for now
+    // For other tabs, no-op
   }
 
   @override

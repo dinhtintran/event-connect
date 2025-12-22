@@ -196,7 +196,7 @@ class EventApi {
   }
 
   /// PUT /api/events/{id}/ - Cập nhật sự kiện (Club Admin)
-  Future<Map<String, dynamic>> updateEvent(String eventId, Map<String, dynamic> eventData) async {
+  Future<Map<String, dynamic>> updateEvent(String eventId, dynamic eventData) async {
     _dbg('PUT /api/events/$eventId/');
     try {
       final res = await dio.put('/api/events/$eventId/', data: eventData);

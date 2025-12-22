@@ -52,10 +52,9 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
   }
   
   Future<void> _loadClubIdAndEvents() async {
-    // Get club ID from user profile
     final authService = Provider.of<AuthService>(context, listen: false);
     final user = authService.user;
-    
+
     if (user == null) {
       setState(() {
         _errorMessage = 'Vui lòng đăng nhập';
@@ -63,47 +62,49 @@ class _ClubEventsPageState extends State<ClubEventsPage> {
       });
       return;
     }
-    
-    // Try to get club ID (similar to club_home_page logic)
-    String? clubId;
-    if (user.profile.clubName != null && user.profile.clubName!.isNotEmpty) {
-      try {
-        final clubApi = ClubAdminApi();
-        final clubsResult = await clubApi.clubApi.getAllClubs();
-        if (clubsResult['status'] == 200) {
-          final clubs = clubsResult['body'];
-          if (clubs is Map && clubs.containsKey('results')) {
-            final results = clubs['results'] as List;
-            try {
-              final matchingClub = results.firstWhere(
-                (c) => c['name'] == user.profile.clubName,
-              );
-              clubId = matchingClub['id']?.toString();
-            } catch (e) {
-              debugPrint('Club not found by name');
-            }
-          } else if (clubs is List) {
-            try {
-              final matchingClub = clubs.firstWhere(
-                (c) => c['name'] == user.profile.clubName,
-              );
-              clubId = matchingClub['id']?.toString();
-            } catch (e) {
-              debugPrint('Club not found by name');
-            }
-          }
-        }
-      } catch (e) {
-        debugPrint('Error fetching clubs: $e');
-      }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final resolvedId = await _repository.getCurrentClubId();
+      if (!mounted) return;
+
+      setState(() {
+        _clubId = resolvedId;
+      });
+
+      await _loadEvents();
+    } on ClubNotAssignedException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.message;
+        _isLoading = false;
+      });
+    } on ClubAssignmentException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.message;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Không thể tải thông tin CLB: $e';
+        _isLoading = false;
+      });
     }
-    
-    _clubId = clubId ?? '1'; // Fallback
-    _loadEvents();
   }
   
   Future<void> _loadEvents() async {
-    if (_clubId == null) return;
+    if (_clubId == null) {
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
     
     setState(() {
       _isLoading = true;

@@ -78,6 +78,12 @@ class ClubAdminApi {
     return await clubApi.getClubById(clubId);
   }
 
+  /// Lấy CLB gắn với user hiện tại
+  Future<Map<String, dynamic>> getCurrentUserClub() async {
+    _dbg('getCurrentUserClub');
+    return await clubApi.getCurrentUserClub();
+  }
+
   /// Lấy thông báo của user
   Future<Map<String, dynamic>> getNotifications({bool? isRead}) async {
     _dbg('getNotifications: isRead=$isRead');
@@ -96,8 +102,40 @@ class ClubAdminApi {
     return await eventApi.getEventParticipants(eventId, status: status);
   }
 
+  /// Lấy thống kê tổng hợp cho CLB
+  Future<Map<String, dynamic>> getClubStatistics(
+    String clubId, {
+    int? rangeDays,
+    int? limitFeedback,
+    int? limitHighlights,
+  }) async {
+    _dbg('getClubStatistics: clubId=$clubId');
+    return await clubApi.getClubStatistics(
+      clubId,
+      rangeDays: rangeDays,
+      limitFeedback: limitFeedback,
+      limitHighlights: limitHighlights,
+    );
+  }
+
+  /// Lấy danh sách sự kiện thô phục vụ thống kê
+  Future<Map<String, dynamic>> getClubStatisticsRawEvents(
+    String clubId, {
+    int? rangeDays,
+    int? page,
+    int? pageSize,
+  }) async {
+    _dbg('getClubStatisticsRawEvents: clubId=$clubId');
+    return await clubApi.getClubStatisticsRawEvents(
+      clubId,
+      rangeDays: rangeDays,
+      page: page,
+      pageSize: pageSize,
+    );
+  }
+
   /// Cập nhật sự kiện
-  Future<Map<String, dynamic>> updateEvent(String eventId, Map<String, dynamic> eventData) async {
+  Future<Map<String, dynamic>> updateEvent(String eventId, dynamic eventData) async {
     _dbg('updateEvent: eventId=$eventId');
     return await eventApi.updateEvent(eventId, eventData);
   }
@@ -109,7 +147,7 @@ class ClubAdminApi {
   }
   
   /// Tạo sự kiện mới cho CLB
-  Future<Map<String, dynamic>> createEvent(String clubId, Map<String, dynamic> eventData) async {
+  Future<Map<String, dynamic>> createEvent(String clubId, dynamic eventData) async {
     _dbg('createEvent: clubId=$clubId');
     return await clubApi.createEvent(clubId, eventData);
   }

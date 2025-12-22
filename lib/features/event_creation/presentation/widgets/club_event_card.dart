@@ -62,15 +62,7 @@ class ClubEventCard extends StatelessWidget {
                 child: SizedBox(
                   height: 160,
                   width: double.infinity,
-                  child: Image.asset(
-                    image,
-                    fit: BoxFit.cover,
-                    errorBuilder: (ctx, err, st) => Container(
-                      height: 160,
-                      width: double.infinity,
-                      color: Colors.grey.shade300,
-                    ),
-                  ),
+                  child: _buildPoster(),
                 ),
               ),
               Positioned(
@@ -232,6 +224,29 @@ class ClubEventCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPoster() {
+    if (image.isEmpty) {
+      return Container(color: Colors.grey.shade200);
+    }
+
+    final isNetwork = image.startsWith('http');
+    final fallback = Container(color: Colors.grey.shade300);
+
+    if (isNetwork) {
+      return Image.network(
+        image,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => fallback,
+      );
+    }
+
+    return Image.asset(
+      image,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => fallback,
     );
   }
 }

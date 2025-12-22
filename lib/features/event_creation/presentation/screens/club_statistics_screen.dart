@@ -1,11 +1,14 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:event_connect/app_routes.dart';
 import 'package:event_connect/features/authentication/authentication.dart';
 import 'package:event_connect/features/event_creation/data/repositories/club_admin_repository.dart';
 import 'package:event_connect/features/event_creation/data/api/club_admin_api.dart';
-import 'package:event_connect/features/event_management/domain/models/event.dart';
+import 'package:event_connect/features/event_creation/domain/models/club_statistics_summary.dart';
 import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 class ClubStatisticsScreen extends StatefulWidget {
   const ClubStatisticsScreen({super.key});
@@ -16,123 +19,117 @@ class ClubStatisticsScreen extends StatefulWidget {
 
 class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
   int _selectedIndex = 3; // Tab "Thống kê"
-  
-  // Statistics data (mock)
-  int _totalParticipants = 1200;
-  double _attendanceRate = 85.0;
-  int _completedEvents = 15;
-  double _satisfactionLevel = 4.7;
-  
-  // Changes
-  double _participantsChange = 12.0;
-  double _attendanceChange = -3.0;
-  int _eventsChange = 1;
-  double _satisfactionChange = 0.2;
-  
-  // Monthly attendance data (last 6 months)
-  final List<int> _monthlyAttendance = [250, 450, 300, 500, 620, 380];
-  
-  // Academic year distribution
-  final Map<String, int> _academicYearDistribution = {
-    'Năm 1': 35,
-    'Năm 2': 28,
-    'Năm 3': 22,
-    'Năm 4': 15,
-  };
-  
-  // Recent feedbacks
-  final List<Map<String, dynamic>> _recentFeedbacks = [
-    {
-      'name': 'Nguyễn Văn An',
-      'rating': 5,
-      'comment': 'Sự kiện được tổ chức rất chuyên nghiệp và bổ ích! Rất mong chờ các sự kiện tiếp theo.',
-      'avatar': 'assets/images/beongnho2.jpg',
-    },
-    {
-      'name': 'Trần Thị Bình',
-      'rating': 4,
-      'comment': 'Nội dung rất hay, nhưng khu vực check-in hơi đông. Cần cải thiện thêm.',
-      'avatar': 'assets/images/beongnho2.jpg',
-    },
-  ];
-  
-  // Event highlights images
-  final List<String> _eventHighlights = [
-    'assets/images/background.jpg',
-    'assets/images/background.jpg',
-    'assets/images/background.jpg',
-    'assets/images/background.jpg',
-  ];
-  
   bool _isLoading = false;
   String? _clubId;
+  String? _errorMessage;
+  ClubStatisticsSummary? _statistics;
   late final ClubAdminRepository _repository;
+  late final DateFormat _fallbackMonthFormatter;
+  DateFormat? _viMonthFormatter;
+
+  static const Color _primaryBlue = Color(0xFF2F5BFF);
+  static const Color _secondaryBlue = Color(0xFF6A8CFF);
+  static const Color _textPrimary = Color(0xFF111B4A);
+  static const Color _textSecondary = Color(0xFF6B7280);
+  static const Color _surfaceColor = Color(0xFFFFFFFF);
+  static const Color _borderColor = Color(0xFFE1E6F7);
+  static const Color _chipBackground = Color(0xFFEFF3FF);
 
   @override
   void initState() {
     super.initState();
     _repository = ClubAdminRepository(api: ClubAdminApi());
+    _fallbackMonthFormatter = DateFormat.MMM();
+    _initLocaleData();
     _loadClubId();
-    _loadStatistics();
+  }
+
+  Future<void> _initLocaleData() async {
+    try {
+      await initializeDateFormatting('vi');
+      if (!mounted) return;
+      setState(() {
+        _viMonthFormatter = DateFormat.MMM('vi');
+      });
+    } catch (error) {
+      debugPrint('Failed to init vi locale: $error');
+    }
   }
 
   Future<void> _loadClubId() async {
     final authService = context.read<AuthService>();
     final user = authService.user;
     
-    if (user == null) return;
-    
-    String? clubId;
-    if (user.profile.clubName != null && user.profile.clubName!.isNotEmpty) {
-      try {
-        final clubApi = ClubAdminApi();
-        final clubsResult = await clubApi.clubApi.getAllClubs();
-        if (clubsResult['status'] == 200) {
-          final clubs = clubsResult['body'];
-          if (clubs is Map && clubs.containsKey('results')) {
-            final results = clubs['results'] as List;
-            try {
-              final matchingClub = results.firstWhere(
-                (c) => c['name'] == user.profile.clubName,
-              );
-              clubId = matchingClub['id']?.toString();
-            } catch (e) {
-              debugPrint('Club not found by name');
-            }
-          } else if (clubs is List) {
-            try {
-              final matchingClub = clubs.firstWhere(
-                (c) => c['name'] == user.profile.clubName,
-              );
-              clubId = matchingClub['id']?.toString();
-            } catch (e) {
-              debugPrint('Club not found by name');
-            }
-          }
-        }
-      } catch (e) {
-        debugPrint('Error fetching clubs: $e');
-      }
+    if (user == null) {
+      setState(() {
+        _errorMessage = 'Bạn cần đăng nhập để xem thống kê CLB.';
+      });
+      return;
     }
-    
-    setState(() {
-      _clubId = clubId ?? '1';
-    });
-  }
 
-  Future<void> _loadStatistics() async {
     setState(() {
       _isLoading = true;
+      _errorMessage = null;
     });
-    
-    // TODO: Load real statistics from API
-    // For now, using mock data
-    
-    await Future.delayed(const Duration(milliseconds: 500));
-    
+
+    try {
+      final clubId = await _repository.getCurrentClubId();
+      if (!mounted) return;
+
+      setState(() {
+        _clubId = clubId;
+      });
+
+      await _loadStatistics(overrideClubId: clubId);
+    } on ClubNotAssignedException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = error.message;
+        _isLoading = false;
+      });
+    } on ClubAssignmentException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = error.message;
+        _isLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = error.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadStatistics({String? overrideClubId}) async {
+    final targetClubId = overrideClubId ?? _clubId;
+    if (targetClubId == null || targetClubId.isEmpty) {
+      setState(() {
+        _errorMessage = 'Không tìm thấy mã CLB để tải thống kê.';
+      });
+      return;
+    }
+
     setState(() {
-      _isLoading = false;
+      _isLoading = true;
+      _errorMessage = null;
     });
+
+    try {
+      final stats = await _repository.getClubStatistics(targetClubId);
+      if (!mounted) return;
+      setState(() {
+        _statistics = stats;
+        _isLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = error.toString();
+        _isLoading = false;
+      });
+    }
   }
 
   void _onItemTapped(int index) {
@@ -156,16 +153,20 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0E102B),
+      backgroundColor: _surfaceColor,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(120),
         child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF5C6BF0), Color(0xFF8456EE)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+          decoration: BoxDecoration(
+            color: _surfaceColor,
+            border: const Border(bottom: BorderSide(color: _borderColor)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
           child: SafeArea(
             bottom: false,
@@ -176,20 +177,20 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
+                      children: [
                         Text(
                           'Báo cáo sự kiện',
                           style: TextStyle(
-                            color: Colors.white,
                             fontSize: 20,
                             fontWeight: FontWeight.w700,
+                            color: _textPrimary,
                           ),
                         ),
-                        SizedBox(height: 6),
+                        const SizedBox(height: 6),
                         Text(
                           'Tổng quan hiệu suất & mức độ hài lòng',
                           style: TextStyle(
-                            color: Colors.white70,
+                            color: _textSecondary,
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
                           ),
@@ -198,19 +199,19 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.notifications_none, color: Colors.white),
+                    icon: Icon(Icons.notifications_none, color: _primaryBlue),
                     onPressed: () {},
                   ),
                   CircleAvatar(
                     radius: 18,
-                    backgroundColor: Colors.white.withOpacity(0.15),
+                    backgroundColor: _chipBackground,
                     child: ClipOval(
                       child: Image.asset(
                         'assets/images/beongnho2.jpg',
                         width: 36,
                         height: 36,
                         fit: BoxFit.cover,
-                        errorBuilder: (ctx, err, st) => const Icon(Icons.person, size: 18, color: Colors.white),
+                        errorBuilder: (ctx, err, st) => Icon(Icons.person, size: 18, color: _primaryBlue),
                       ),
                     ),
                   ),
@@ -220,52 +221,13 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
           ),
         ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Colors.white))
-          : RefreshIndicator(
-              onRefresh: _loadStatistics,
-              color: Colors.white,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeroSummary(),
-                    const SizedBox(height: 18),
-
-                    // Statistics Overview Cards
-                    _buildStatisticsOverview(),
-                    const SizedBox(height: 20),
-                    
-                    // Monthly Attendance Trend
-                    _buildMonthlyAttendanceChart(),
-                    const SizedBox(height: 20),
-                    
-                    // Academic Year Distribution
-                    _buildAcademicYearChart(),
-                    const SizedBox(height: 20),
-                    
-                    // Recent Feedback
-                    _buildRecentFeedback(),
-                    const SizedBox(height: 20),
-                    
-                    // Event Highlights
-                    _buildEventHighlights(),
-                    const SizedBox(height: 20),
-                    
-                    // Export Report
-                    _buildExportReport(),
-                    const SizedBox(height: 80),
-                  ],
-                ),
-              ),
-            ),
+      body: _buildBody(),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: _selectedIndex,
-        selectedItemColor: const Color(0xFF5C6BF0),
-        unselectedItemColor: Colors.grey.shade500,
-        backgroundColor: Colors.white,
+        selectedItemColor: _primaryBlue,
+        unselectedItemColor: _textSecondary,
+        backgroundColor: _surfaceColor,
         showUnselectedLabels: true,
         onTap: _onItemTapped,
         items: const [
@@ -294,26 +256,154 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
     );
   }
 
-  Widget _buildStatisticsOverview() {
+  Widget _buildBody() {
+    if (_isLoading && _statistics == null) {
+      return Center(child: CircularProgressIndicator(color: _primaryBlue));
+    }
+
+    final stats = _statistics ?? ClubStatisticsSummary.empty();
+    final hasData = stats.hasRealData;
+
+    return RefreshIndicator(
+      onRefresh: () => _loadStatistics(),
+      color: _primaryBlue,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (_errorMessage != null) ...[
+              _buildErrorBanner(_errorMessage!),
+              const SizedBox(height: 16),
+            ],
+            _buildHeroSummary(stats),
+            const SizedBox(height: 18),
+            if (!hasData)
+              _buildEmptyState()
+            else ...[
+              _buildStatisticsOverview(stats),
+              const SizedBox(height: 20),
+              _buildMonthlyAttendanceChart(stats.monthlyAttendance),
+              const SizedBox(height: 20),
+              _buildAcademicYearChart(stats.academicYearDistribution),
+              const SizedBox(height: 20),
+              _buildRecentFeedback(stats.recentFeedbacks),
+              const SizedBox(height: 20),
+              _buildEventHighlights(stats.eventHighlights),
+              const SizedBox(height: 20),
+            ],
+            _buildExportReport(),
+            const SizedBox(height: 80),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorBanner(String message) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF4F5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFFCDD5)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.error_outline, color: Colors.redAccent),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(color: _textPrimary, fontSize: 13, fontWeight: FontWeight.w500),
+            ),
+          ),
+          TextButton(
+            onPressed: () => _loadStatistics(),
+            style: TextButton.styleFrom(foregroundColor: _primaryBlue),
+            child: const Text('Thử lại'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.insights_outlined, color: _primaryBlue),
+              const SizedBox(width: 8),
+              Text(
+                'Chưa có dữ liệu thống kê',
+                style: TextStyle(
+                  color: _textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Hệ thống sẽ tự động tổng hợp số liệu sau khi CLB có sự kiện hoặc người tham dự đầu tiên.',
+            style: TextStyle(color: _textSecondary, fontSize: 13),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: () => _loadStatistics(),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: _primaryBlue),
+              foregroundColor: _primaryBlue,
+            ),
+            icon: const Icon(Icons.refresh),
+            label: const Text('Thử tải lại'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatisticsOverview(ClubStatisticsSummary stats) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'Tổng quan thống kê',
               style: TextStyle(
-                color: Colors.white,
+                color: _textPrimary,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
             TextButton(
               onPressed: () => Navigator.pushNamed(context, AppRoutes.clubStatisticsDetail),
+              style: TextButton.styleFrom(foregroundColor: _primaryBlue),
               child: const Text(
                 'Xem chi tiết',
-                style: TextStyle(color: Color(0xFF7E8BFF), fontWeight: FontWeight.w600),
+                style: TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -331,35 +421,39 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
             children: [
               _buildStatCard(
                 icon: Icons.people,
-                change: _participantsChange,
-                value: _totalParticipants.toString(),
+                change: stats.participantsChange,
+                value: _formatParticipants(stats.totalParticipants),
                 label: 'Tổng số người tham dự',
-                isPositive: _participantsChange > 0,
-                sparkline: _monthlyAttendance.map((e) => e.toDouble()).toList(),
+                isPositive: stats.participantsChange >= 0,
+                sparkline: stats.monthlyAttendance.map((e) => e.toDouble()).toList(),
               ),
               _buildStatCard(
                 icon: Icons.check_circle,
-                change: _attendanceChange,
-                value: '${_attendanceRate.toStringAsFixed(0)}%',
+                change: stats.attendanceChange,
+                value: '${stats.attendanceRate.toStringAsFixed(1)}%',
                 label: 'Tỷ lệ tham dự',
-                isPositive: _attendanceChange > 0,
-                sparkline: [80, 82, 79, 85, 87, 85],
+                isPositive: stats.attendanceChange >= 0,
+                sparkline: stats.monthlyAttendance.map((e) => e.toDouble()).toList(),
               ),
               _buildStatCard(
                 icon: Icons.calendar_today,
-                change: _eventsChange.toDouble(),
-                value: _completedEvents.toString(),
+                change: stats.eventsChange.toDouble(),
+                value: stats.completedEvents.toString(),
                 label: 'Sự kiện đã hoàn thành',
-                isPositive: _eventsChange > 0,
-                sparkline: [2, 3, 2, 4, 1, 3],
+                isPositive: stats.eventsChange >= 0,
+                changeSuffix: '',
+                sparkline: stats.monthlyAttendance.map((e) => e.toDouble()).toList(),
               ),
               _buildStatCard(
                 icon: Icons.favorite,
-                change: _satisfactionChange,
-                value: '${_satisfactionLevel.toStringAsFixed(1)}/5',
+                change: stats.satisfactionChange,
+                value: '${stats.satisfactionLevel.toStringAsFixed(1)}/5',
                 label: 'Mức độ hài lòng',
-                isPositive: _satisfactionChange > 0,
-                sparkline: [4.5, 4.6, 4.4, 4.8, 4.7, 4.7],
+                isPositive: stats.satisfactionChange >= 0,
+                sparkline: List<double>.filled(
+                  stats.monthlyAttendance.length,
+                  stats.satisfactionLevel,
+                ),
               ),
             ],
           ),
@@ -368,21 +462,30 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
     );
   }
 
-  Widget _buildHeroSummary() {
+  String _formatParticipants(int value) {
+    return NumberFormat.compact(locale: 'vi').format(value);
+  }
+
+  String _formatDelta(double value, {String suffix = '%'}) {
+    if (value == 0) return '0$suffix';
+    final decimals = value.abs() >= 10 ? 0 : 1;
+    final formatted = value.toStringAsFixed(decimals);
+    final sign = value > 0 ? '+' : '';
+    return '$sign$formatted$suffix';
+  }
+
+  Widget _buildHeroSummary(ClubStatisticsSummary stats) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF5C6BF0), Color(0xFF7E5AF0)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
+        color: _surfaceColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _borderColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.25),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 12),
           ),
         ],
       ),
@@ -392,10 +495,10 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Hiệu suất tổng quan',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: _textPrimary,
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                   ),
@@ -403,16 +506,22 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    _buildHeroChip(Icons.trending_up, '+12% tham dự'),
+                    _buildHeroChip(
+                      Icons.trending_up,
+                      '${_formatDelta(stats.participantsChange)} tham dự',
+                    ),
                     const SizedBox(width: 8),
-                    _buildHeroChip(Icons.emoji_events_outlined, '4.7/5 hài lòng'),
+                    _buildHeroChip(
+                      Icons.emoji_events_outlined,
+                      '${stats.satisfactionLevel.toStringAsFixed(1)}/5 hài lòng',
+                    ),
                   ],
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  '15 sự kiện hoàn thành · 85% tỷ lệ tham dự',
+                  '${stats.completedEvents} sự kiện hoàn thành · ${stats.attendanceRate.toStringAsFixed(1)}% tỷ lệ tham dự',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
+                    color: _textSecondary,
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                   ),
@@ -425,10 +534,10 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
             width: 72,
             height: 72,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
+              color: _chipBackground,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.bar_chart_rounded, color: Colors.white, size: 36),
+            child: Icon(Icons.bar_chart_rounded, color: _primaryBlue, size: 36),
           ),
         ],
       ),
@@ -439,18 +548,18 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.18),
+        color: _chipBackground,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Colors.white, size: 16),
+          Icon(icon, color: _primaryBlue, size: 16),
           const SizedBox(width: 6),
           Text(
             label,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: _primaryBlue,
               fontWeight: FontWeight.w600,
               fontSize: 12,
             ),
@@ -466,16 +575,18 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
     required String value,
     required String label,
     required bool isPositive,
+    String changeSuffix = '%',
     List<double>? sparkline,
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _surfaceColor,
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _borderColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 12,
             offset: const Offset(0, 6),
           )
@@ -492,10 +603,10 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEEF1FF),
+                  color: _chipBackground,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: const Color(0xFF5568FF), size: 20),
+                child: Icon(icon, color: _primaryBlue, size: 20),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -504,7 +615,7 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
-                  '${isPositive ? '+' : ''}${change.toStringAsFixed(change % 1 == 0 ? 0 : 1)}%',
+                  '${change == 0 ? '' : (change > 0 ? '+' : '')}${change.toStringAsFixed(change % 1 == 0 ? 0 : 1)}$changeSuffix',
                   style: TextStyle(
                     color: isPositive ? Colors.green : Colors.red,
                     fontSize: 11,
@@ -519,10 +630,10 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
             children: [
               Text(
                 value,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A1A2E),
+                  color: _textPrimary,
                 ),
               ),
               const SizedBox(height: 4),
@@ -549,16 +660,25 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
     );
   }
 
-  Widget _buildMonthlyAttendanceChart() {
-    final maxValue = _monthlyAttendance.reduce((a, b) => a > b ? a : b);
+  Widget _buildMonthlyAttendanceChart(List<int> series) {
+    if (series.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final maxValue = max(series.reduce(max), 1).toDouble();
     final chartHeight = 200.0;
-    final monthLabels = ['Th1', 'Th2', 'Th3', 'Th4', 'Th5', 'Th6'];
+    final now = DateTime.now();
+    final monthLabels = List<String>.generate(series.length, (index) {
+      final monthDate = DateTime(now.year, now.month - (series.length - 1 - index));
+      return _formatMonth(monthDate);
+    });
     
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _surfaceColor,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -566,29 +686,30 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Xu hướng tham dự theo tháng',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
+                  color: _textPrimary,
                 ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEEF1FF),
+                  color: _chipBackground,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(Icons.access_time, size: 14, color: Color(0xFF5568FF)),
-                    SizedBox(width: 6),
+                  children: [
+                    Icon(Icons.access_time, size: 14, color: _primaryBlue),
+                    const SizedBox(width: 6),
                     Text(
                       '6 tháng gần đây',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Color(0xFF5568FF),
+                        color: _primaryBlue,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -602,7 +723,7 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
             'Hiển thị số lượng người tham dự trong 6 tháng qua.',
             style: TextStyle(
               fontSize: 12,
-              color: Colors.grey.shade600,
+              color: _textSecondary,
             ),
           ),
           const SizedBox(height: 20),
@@ -611,8 +732,8 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: List.generate(_monthlyAttendance.length, (index) {
-                final value = _monthlyAttendance[index];
+              children: List.generate(series.length, (index) {
+                final value = series[index];
                 final height = (value / maxValue) * (chartHeight - 40);
                 return Expanded(
                   child: Padding(
@@ -622,17 +743,18 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
                       children: [
                         Text(
                           value.toString(),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
+                            color: _textPrimary,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Container(
                           height: height,
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF5568FF), Color(0xFF7E5AF0)],
+                            gradient: LinearGradient(
+                              colors: [_primaryBlue, _secondaryBlue],
                               begin: Alignment.bottomCenter,
                               end: Alignment.topCenter,
                             ),
@@ -659,8 +781,18 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
     );
   }
 
-  Widget _buildAcademicYearChart() {
-    final total = _academicYearDistribution.values.reduce((a, b) => a + b);
+  String _formatMonth(DateTime date) {
+    try {
+      final formatter = _viMonthFormatter;
+      if (formatter != null) return formatter.format(date);
+    } catch (_) {
+      // fallback below
+    }
+    return _fallbackMonthFormatter.format(date);
+  }
+
+  Widget _buildAcademicYearChart(Map<String, int> distribution) {
+    final total = distribution.values.fold<int>(0, (sum, val) => sum + val);
     final colors = [
       const Color(0xFF5568FF),
       const Color(0xFF00C49A),
@@ -671,17 +803,19 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _surfaceColor,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Phân bố đăng ký theo năm học',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
+              color: _textPrimary,
             ),
           ),
           const SizedBox(height: 4),
@@ -689,7 +823,7 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
             'Tỷ lệ sinh viên theo từng năm học đã đăng ký.',
             style: TextStyle(
               fontSize: 12,
-              color: Colors.grey.shade600,
+              color: _textSecondary,
             ),
           ),
           const SizedBox(height: 20),
@@ -701,7 +835,7 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
                 height: 120,
                 child: CustomPaint(
                   painter: _PieChartPainter(
-                    data: _academicYearDistribution.values.toList(),
+                    data: distribution.values.toList(),
                     colors: colors,
                   ),
                 ),
@@ -710,9 +844,12 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: List.generate(_academicYearDistribution.length, (index) {
-                    final entry = _academicYearDistribution.entries.toList()[index];
-                    final percentage = (entry.value / total * 100).toStringAsFixed(0);
+                  children: List.generate(distribution.length, (index) {
+                    final entry = distribution.entries.toList()[index];
+                    final color = colors[index % colors.length];
+                    final percentage = total == 0
+                        ? '0'
+                        : (entry.value / total * 100).toStringAsFixed(0);
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: Row(
@@ -721,7 +858,7 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
                             width: 12,
                             height: 12,
                             decoration: BoxDecoration(
-                              color: colors[index],
+                              color: color,
                               shape: BoxShape.rectangle,
                             ),
                           ),
@@ -729,14 +866,15 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
                           Expanded(
                             child: Text(
                               'Sinh viên ${entry.key}',
-                              style: const TextStyle(fontSize: 13),
+                              style: TextStyle(fontSize: 13, color: _textPrimary),
                             ),
                           ),
                           Text(
                             '$percentage%',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
+                              color: _textPrimary,
                             ),
                           ),
                         ],
@@ -752,107 +890,111 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
     );
   }
 
-  Widget _buildRecentFeedback() {
+  Widget _buildRecentFeedback(List<ClubFeedbackSummary> feedbacks) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Phản hồi gần đây',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: _textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
-        ..._recentFeedbacks.map((feedback) => Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: Colors.grey.shade200,
-                child: ClipOval(
-                  child: Image.asset(
-                    feedback['avatar'] as String,
-                    width: 48,
-                    height: 48,
-                    fit: BoxFit.cover,
-                    errorBuilder: (ctx, err, st) => const Icon(Icons.person),
+        if (feedbacks.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _surfaceColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _borderColor),
+            ),
+            child: Text(
+              'Chưa có phản hồi đủ dữ liệu.',
+              style: TextStyle(color: _textSecondary),
+            ),
+          )
+        else ...feedbacks.map(
+          (feedback) => Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _surfaceColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _borderColor),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 24,
+                  backgroundColor: Colors.grey.shade200,
+                  child: ClipOval(
+                    child: SizedBox(
+                      width: 48,
+                      height: 48,
+                      child: _buildFeedbackAvatar(feedback.avatarUrl),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      feedback['name'] as String,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        feedback.title,
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _textPrimary),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: List.generate(5, (index) {
-                        return Icon(
-                          Icons.star,
-                          size: 16,
-                          color: index < (feedback['rating'] as int)
-                              ? Colors.amber
-                              : Colors.grey.shade300,
-                        );
-                      }),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      feedback['comment'] as String,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey.shade700,
+                      const SizedBox(height: 4),
+                      Row(
+                        children: List.generate(5, (index) {
+                          return Icon(
+                            Icons.star,
+                            size: 16,
+                            color: index < feedback.rating.round()
+                                ? Colors.amber
+                                : Colors.grey.shade300,
+                          );
+                        }),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+                      Text(
+                        feedback.comment,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: _textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        )),
+        ),
       ],
     );
   }
 
-  Widget _buildEventHighlights() {
+  Widget _buildEventHighlights(List<ClubHighlightSummary> highlights) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'Điểm nhấn sự kiện',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(color: _textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
             ),
             GestureDetector(
               onTap: () {
                 // TODO: Navigate to all highlights
               },
-              child: const Text(
+              child: Text(
                 'Xem tất cả',
                 style: TextStyle(
-                  color: Color(0xFF5568FF),
+                  color: _primaryBlue,
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
@@ -861,28 +1003,113 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        GridView.count(
-          crossAxisCount: 2,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: 1.0,
-          children: _eventHighlights.map((imagePath) {
-            return ClipRRect(
+        if (highlights.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _surfaceColor,
               borderRadius: BorderRadius.circular(12),
-              child: Image.asset(
-                imagePath,
-                fit: BoxFit.cover,
-                errorBuilder: (ctx, err, st) => Container(
-                  color: Colors.grey.shade300,
-                  child: const Icon(Icons.image, size: 48),
+              border: Border.all(color: _borderColor),
+            ),
+            child: Text(
+              'Chưa có hình ảnh nổi bật.',
+              style: TextStyle(color: _textSecondary),
+            ),
+          )
+        else
+          GridView.count(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            childAspectRatio: 1.0,
+            children: highlights.map((highlight) {
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    _buildHighlightImage(highlight.posterUrl),
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.65),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: 8,
+                      right: 8,
+                      bottom: 8,
+                      child: Text(
+                        highlight.title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            );
-          }).toList(),
-        ),
+              );
+            }).toList(),
+          ),
       ],
+    );
+  }
+
+  Widget _buildFeedbackAvatar(String avatarUrl) {
+    if (avatarUrl.isEmpty) {
+      return Image.asset(
+        'assets/images/beongnho2.jpg',
+        fit: BoxFit.cover,
+      );
+    }
+    if (avatarUrl.startsWith('http')) {
+      return Image.network(
+        avatarUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Image.asset('assets/images/beongnho2.jpg', fit: BoxFit.cover);
+        },
+      );
+    }
+    return Image.asset(
+      avatarUrl,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        return Image.asset('assets/images/beongnho2.jpg', fit: BoxFit.cover);
+      },
+    );
+  }
+
+  Widget _buildHighlightImage(String path) {
+    if (path.startsWith('http')) {
+      return Image.network(
+        path,
+        fit: BoxFit.cover,
+        errorBuilder: (ctx, err, st) => Container(
+          color: Colors.grey.shade300,
+          child: const Icon(Icons.image, size: 48),
+        ),
+      );
+    }
+    return Image.asset(
+      path,
+      fit: BoxFit.cover,
+      errorBuilder: (ctx, err, st) => Container(
+        color: Colors.grey.shade300,
+        child: const Icon(Icons.image, size: 48),
+      ),
     );
   }
 
@@ -890,13 +1117,9 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Xuất báo cáo',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: _textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
         _buildExportButton(
@@ -942,7 +1165,7 @@ class _ClubStatisticsScreenState extends State<ClubStatisticsScreen> {
       child: ElevatedButton.icon(
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF5568FF),
+          backgroundColor: _primaryBlue,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
           shape: RoundedRectangleBorder(
@@ -972,7 +1195,15 @@ class _PieChartPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final total = data.reduce((a, b) => a + b);
+    final total = data.fold<int>(0, (sum, value) => sum + value);
+    if (total == 0) {
+      final paint = Paint()
+        ..color = Colors.grey.shade300
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2;
+      canvas.drawCircle(Offset(size.width / 2, size.height / 2), size.width / 2, paint);
+      return;
+    }
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2;
     
@@ -1014,13 +1245,13 @@ class _MiniSparklinePainter extends CustomPainter {
     final range = (maxVal - minVal).abs() < 1 ? 1 : maxVal - minVal;
 
     final linePaint = Paint()
-      ..color = const Color(0xFF5C6BF0)
+      ..color = const Color(0xFF2F5BFF)
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
     final fillPaint = Paint()
-      ..color = const Color(0xFF5C6BF0).withOpacity(0.15)
+      ..color = const Color(0xFF2F5BFF).withValues(alpha: 0.15)
       ..style = PaintingStyle.fill;
 
     final path = Path();
