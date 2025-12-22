@@ -77,6 +77,8 @@ class Event(models.Model):
             models.Index(fields=['status', 'start_at']),
             models.Index(fields=['category', 'status']),
             models.Index(fields=['is_featured', 'status']),
+            models.Index(fields=['club', 'start_at'], name='event_club_start_idx'),
+            models.Index(fields=['club', 'status'], name='event_club_status_idx'),
         ]
     
     def __str__(self):
@@ -132,6 +134,13 @@ class Event(models.Model):
         if self.registration_end and now > self.registration_end:
             return False
         return True
+
+    @property
+    def poster_url(self):
+        """Return poster URL if uploaded (used by statistics/highlights)."""
+        if self.poster:
+            return self.poster.url
+        return None
 
 
 # ============= EVENT REGISTRATION =============

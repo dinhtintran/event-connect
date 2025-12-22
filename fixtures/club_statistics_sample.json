@@ -1,0 +1,580 @@
+[
+  {
+    "model": "accounts.user",
+    "pk": 9001,
+    "fields": {
+      "password": "pbkdf2_sha256$1000000$MTJl5PbR8I4HfIoQWxFQA4$ZVLcZlfCvL2hhs484+Z6EDdND6y6oM6Ti9wphUrNFo8",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "stats-admin",
+      "first_name": "Linh",
+      "last_name": "Tran",
+      "email": "stats-admin@example.com",
+      "is_staff": true,
+      "is_active": true,
+      "date_joined": "2024-01-01T00:00:00Z",
+      "role": "club_admin",
+      "student_id": "S9001",
+      "faculty": "Engineering",
+      "phone": "0900000001",
+      "avatar": "",
+      "bio": "Sample club statistics admin",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "accounts.user",
+    "pk": 9002,
+    "fields": {
+      "password": "pbkdf2_sha256$1000000$MTJl5PbR8I4HfIoQWxFQA4$ZVLcZlfCvL2hhs484+Z6EDdND6y6oM6Ti9wphUrNFo8",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "mentor-one",
+      "first_name": "Bao",
+      "last_name": "Le",
+      "email": "mentor-one@example.com",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2024-01-02T00:00:00Z",
+      "role": "club_admin",
+      "student_id": "S9002",
+      "faculty": "Engineering",
+      "phone": "0900000002",
+      "avatar": "",
+      "bio": "Club mentor",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "accounts.user",
+    "pk": 9003,
+    "fields": {
+      "password": "pbkdf2_sha256$1000000$MTJl5PbR8I4HfIoQWxFQA4$ZVLcZlfCvL2hhs484+Z6EDdND6y6oM6Ti9wphUrNFo8",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "analyst-zero",
+      "first_name": "Anh",
+      "last_name": "Pham",
+      "email": "analyst-zero@example.com",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2024-02-10T00:00:00Z",
+      "role": "student",
+      "student_id": "S9003",
+      "faculty": "Engineering",
+      "phone": "0900000003",
+      "avatar": "",
+      "bio": "Data analyst volunteer",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "accounts.user",
+    "pk": 9004,
+    "fields": {
+      "password": "pbkdf2_sha256$1000000$MTJl5PbR8I4HfIoQWxFQA4$ZVLcZlfCvL2hhs484+Z6EDdND6y6oM6Ti9wphUrNFo8",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "analyst-one",
+      "first_name": "Minh",
+      "last_name": "Do",
+      "email": "analyst-one@example.com",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2024-03-10T00:00:00Z",
+      "role": "student",
+      "student_id": "S9004",
+      "faculty": "Engineering",
+      "phone": "0900000004",
+      "avatar": "",
+      "bio": "Analytics volunteer",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "accounts.user",
+    "pk": 9005,
+    "fields": {
+      "password": "pbkdf2_sha256$1000000$MTJl5PbR8I4HfIoQWxFQA4$ZVLcZlfCvL2hhs484+Z6EDdND6y6oM6Ti9wphUrNFo8",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "analyst-two",
+      "first_name": "Nam",
+      "last_name": "Vu",
+      "email": "analyst-two@example.com",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2024-03-15T00:00:00Z",
+      "role": "student",
+      "student_id": "S9005",
+      "faculty": "Engineering",
+      "phone": "0900000005",
+      "avatar": "",
+      "bio": "Analytics volunteer",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "clubs.club",
+    "pk": 7001,
+    "fields": {
+      "name": "Analytics Society",
+      "slug": "analytics-society",
+      "description": "Demo club used to exercise the statistics API.",
+      "faculty": "Engineering",
+      "contact_email": "analytics@example.com",
+      "contact_phone": "0900000099",
+      "logo": "",
+      "status": "active",
+      "president": 9001,
+      "created_at": "2024-04-01T00:00:00Z",
+      "updated_at": "2025-12-01T00:00:00Z",
+      "admins": [9002]
+    }
+  },
+  {
+    "model": "clubs.clubmembership",
+    "pk": 8001,
+    "fields": {
+      "user": 9001,
+      "club": 7001,
+      "role": "president",
+      "joined_at": "2024-04-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "clubs.clubmembership",
+    "pk": 8002,
+    "fields": {
+      "user": 9002,
+      "club": 7001,
+      "role": "admin",
+      "joined_at": "2024-04-02T00:00:00Z"
+    }
+  },
+  {
+    "model": "clubs.clubmembership",
+    "pk": 8003,
+    "fields": {
+      "user": 9003,
+      "club": 7001,
+      "role": "member",
+      "joined_at": "2024-04-10T00:00:00Z"
+    }
+  },
+  {
+    "model": "clubs.clubmembership",
+    "pk": 8004,
+    "fields": {
+      "user": 9004,
+      "club": 7001,
+      "role": "member",
+      "joined_at": "2024-04-12T00:00:00Z"
+    }
+  },
+  {
+    "model": "clubs.clubmembership",
+    "pk": 8005,
+    "fields": {
+      "user": 9005,
+      "club": 7001,
+      "role": "member",
+      "joined_at": "2024-04-14T00:00:00Z"
+    }
+  },
+  {
+    "model": "event_management.event",
+    "pk": 6001,
+    "fields": {
+      "title": "Winter Robotics Expo",
+      "slug": "winter-robotics-expo",
+      "description": "Seasonal robotics exhibition.",
+      "category": "technology",
+      "club": 7001,
+      "created_by": 9001,
+      "location": "Auditorium A",
+      "location_detail": "",
+      "start_at": "2025-12-05T09:00:00Z",
+      "end_at": "2025-12-05T17:00:00Z",
+      "registration_start": null,
+      "registration_end": null,
+      "capacity": 200,
+      "poster": "",
+      "banner": "",
+      "status": "completed",
+      "is_featured": true,
+      "requires_approval": false,
+      "view_count": 420,
+      "average_rating": "4.80",
+      "rating_count": 3,
+      "created_at": "2025-10-01T00:00:00Z",
+      "updated_at": "2025-12-06T00:00:00Z",
+      "approved_at": "2025-10-02T00:00:00Z"
+    }
+  },
+  {
+    "model": "event_management.event",
+    "pk": 6002,
+    "fields": {
+      "title": "Deep Learning Bootcamp",
+      "slug": "deep-learning-bootcamp",
+      "description": "Hands-on DL bootcamp",
+      "category": "technology",
+      "club": 7001,
+      "created_by": 9001,
+      "location": "Innovation Lab",
+      "location_detail": "",
+      "start_at": "2025-11-08T08:00:00Z",
+      "end_at": "2025-11-08T16:00:00Z",
+      "registration_start": null,
+      "registration_end": null,
+      "capacity": 120,
+      "poster": "",
+      "banner": "",
+      "status": "completed",
+      "is_featured": true,
+      "requires_approval": false,
+      "view_count": 360,
+      "average_rating": "4.60",
+      "rating_count": 4,
+      "created_at": "2025-09-10T00:00:00Z",
+      "updated_at": "2025-11-09T00:00:00Z",
+      "approved_at": "2025-09-11T00:00:00Z"
+    }
+  },
+  {
+    "model": "event_management.event",
+    "pk": 6003,
+    "fields": {
+      "title": "Autumn Data Hack",
+      "slug": "autumn-data-hack",
+      "description": "Hackathon for social good",
+      "category": "technology",
+      "club": 7001,
+      "created_by": 9001,
+      "location": "Hall B",
+      "location_detail": "",
+      "start_at": "2025-10-10T08:30:00Z",
+      "end_at": "2025-10-10T20:30:00Z",
+      "registration_start": null,
+      "registration_end": null,
+      "capacity": 150,
+      "poster": "",
+      "banner": "",
+      "status": "completed",
+      "is_featured": false,
+      "requires_approval": false,
+      "view_count": 280,
+      "average_rating": "4.20",
+      "rating_count": 5,
+      "created_at": "2025-08-10T00:00:00Z",
+      "updated_at": "2025-10-11T00:00:00Z",
+      "approved_at": "2025-08-11T00:00:00Z"
+    }
+  },
+  {
+    "model": "event_management.event",
+    "pk": 6004,
+    "fields": {
+      "title": "Quant Finance Lab",
+      "slug": "quant-finance-lab",
+      "description": "Finance + ML experiments",
+      "category": "academic",
+      "club": 7001,
+      "created_by": 9001,
+      "location": "Lab C",
+      "location_detail": "",
+      "start_at": "2025-09-12T09:00:00Z",
+      "end_at": "2025-09-12T15:00:00Z",
+      "registration_start": null,
+      "registration_end": null,
+      "capacity": 90,
+      "poster": "",
+      "banner": "",
+      "status": "approved",
+      "is_featured": false,
+      "requires_approval": false,
+      "view_count": 190,
+      "average_rating": "4.10",
+      "rating_count": 2,
+      "created_at": "2025-07-05T00:00:00Z",
+      "updated_at": "2025-09-13T00:00:00Z",
+      "approved_at": "2025-07-06T00:00:00Z"
+    }
+  },
+  {
+    "model": "event_management.event",
+    "pk": 6005,
+    "fields": {
+      "title": "UX Research Marathon",
+      "slug": "ux-research-marathon",
+      "description": "Design-led research sprint",
+      "category": "cultural",
+      "club": 7001,
+      "created_by": 9001,
+      "location": "Studio D",
+      "location_detail": "",
+      "start_at": "2025-08-18T10:00:00Z",
+      "end_at": "2025-08-18T18:00:00Z",
+      "registration_start": null,
+      "registration_end": null,
+      "capacity": 80,
+      "poster": "",
+      "banner": "",
+      "status": "completed",
+      "is_featured": false,
+      "requires_approval": false,
+      "view_count": 150,
+      "average_rating": "3.90",
+      "rating_count": 3,
+      "created_at": "2025-06-18T00:00:00Z",
+      "updated_at": "2025-08-19T00:00:00Z",
+      "approved_at": "2025-06-19T00:00:00Z"
+    }
+  },
+  {
+    "model": "event_management.event",
+    "pk": 6006,
+    "fields": {
+      "title": "Summer Innovation Sprint",
+      "slug": "summer-innovation-sprint",
+      "description": "Summer ideation sprint",
+      "category": "technology",
+      "club": 7001,
+      "created_by": 9001,
+      "location": "Auditorium C",
+      "location_detail": "",
+      "start_at": "2025-07-15T09:30:00Z",
+      "end_at": "2025-07-15T17:30:00Z",
+      "registration_start": null,
+      "registration_end": null,
+      "capacity": 120,
+      "poster": "",
+      "banner": "",
+      "status": "completed",
+      "is_featured": false,
+      "requires_approval": false,
+      "view_count": 170,
+      "average_rating": "4.00",
+      "rating_count": 4,
+      "created_at": "2025-05-10T00:00:00Z",
+      "updated_at": "2025-07-16T00:00:00Z",
+      "approved_at": "2025-05-11T00:00:00Z"
+    }
+  },
+  {
+    "model": "event_management.eventregistration",
+    "pk": 5001,
+    "fields": {
+      "event": 6001,
+      "user": 9002,
+      "status": "attended",
+      "note": "",
+      "qr_code": "EVT-6001-QR-001",
+      "checked_in": true,
+      "checked_in_at": "2025-12-05T09:05:00Z",
+      "registered_at": "2025-10-10T00:00:00Z",
+      "updated_at": "2025-12-05T17:30:00Z"
+    }
+  },
+  {
+    "model": "event_management.eventregistration",
+    "pk": 5002,
+    "fields": {
+      "event": 6001,
+      "user": 9003,
+      "status": "attended",
+      "note": "",
+      "qr_code": "EVT-6001-QR-002",
+      "checked_in": true,
+      "checked_in_at": "2025-12-05T09:10:00Z",
+      "registered_at": "2025-10-11T00:00:00Z",
+      "updated_at": "2025-12-05T17:40:00Z"
+    }
+  },
+  {
+    "model": "event_management.eventregistration",
+    "pk": 5003,
+    "fields": {
+      "event": 6001,
+      "user": 9004,
+      "status": "registered",
+      "note": "",
+      "qr_code": "EVT-6001-QR-003",
+      "checked_in": false,
+      "checked_in_at": null,
+      "registered_at": "2025-10-12T00:00:00Z",
+      "updated_at": "2025-10-12T00:00:00Z"
+    }
+  },
+  {
+    "model": "event_management.eventregistration",
+    "pk": 5004,
+    "fields": {
+      "event": 6002,
+      "user": 9002,
+      "status": "attended",
+      "note": "",
+      "qr_code": "EVT-6002-QR-001",
+      "checked_in": true,
+      "checked_in_at": "2025-11-08T08:05:00Z",
+      "registered_at": "2025-09-15T00:00:00Z",
+      "updated_at": "2025-11-08T16:10:00Z"
+    }
+  },
+  {
+    "model": "event_management.eventregistration",
+    "pk": 5005,
+    "fields": {
+      "event": 6002,
+      "user": 9005,
+      "status": "registered",
+      "note": "",
+      "qr_code": "EVT-6002-QR-002",
+      "checked_in": false,
+      "checked_in_at": null,
+      "registered_at": "2025-09-16T00:00:00Z",
+      "updated_at": "2025-09-16T00:00:00Z"
+    }
+  },
+  {
+    "model": "event_management.eventregistration",
+    "pk": 5006,
+    "fields": {
+      "event": 6002,
+      "user": 9003,
+      "status": "attended",
+      "note": "",
+      "qr_code": "EVT-6002-QR-003",
+      "checked_in": true,
+      "checked_in_at": "2025-11-08T08:07:00Z",
+      "registered_at": "2025-09-17T00:00:00Z",
+      "updated_at": "2025-11-08T16:15:00Z"
+    }
+  },
+  {
+    "model": "event_management.eventregistration",
+    "pk": 5007,
+    "fields": {
+      "event": 6003,
+      "user": 9004,
+      "status": "attended",
+      "note": "",
+      "qr_code": "EVT-6003-QR-001",
+      "checked_in": true,
+      "checked_in_at": "2025-10-10T08:40:00Z",
+      "registered_at": "2025-08-20T00:00:00Z",
+      "updated_at": "2025-10-10T21:00:00Z"
+    }
+  },
+  {
+    "model": "event_management.eventregistration",
+    "pk": 5008,
+    "fields": {
+      "event": 6003,
+      "user": 9005,
+      "status": "registered",
+      "note": "",
+      "qr_code": "EVT-6003-QR-002",
+      "checked_in": false,
+      "checked_in_at": null,
+      "registered_at": "2025-08-25T00:00:00Z",
+      "updated_at": "2025-08-25T00:00:00Z"
+    }
+  },
+  {
+    "model": "event_management.eventregistration",
+    "pk": 5009,
+    "fields": {
+      "event": 6004,
+      "user": 9002,
+      "status": "registered",
+      "note": "",
+      "qr_code": "EVT-6004-QR-001",
+      "checked_in": false,
+      "checked_in_at": null,
+      "registered_at": "2025-07-20T00:00:00Z",
+      "updated_at": "2025-07-20T00:00:00Z"
+    }
+  },
+  {
+    "model": "event_management.eventregistration",
+    "pk": 5010,
+    "fields": {
+      "event": 6004,
+      "user": 9005,
+      "status": "registered",
+      "note": "",
+      "qr_code": "EVT-6004-QR-002",
+      "checked_in": false,
+      "checked_in_at": null,
+      "registered_at": "2025-07-22T00:00:00Z",
+      "updated_at": "2025-07-22T00:00:00Z"
+    }
+  },
+  {
+    "model": "event_management.eventregistration",
+    "pk": 5011,
+    "fields": {
+      "event": 6005,
+      "user": 9003,
+      "status": "registered",
+      "note": "",
+      "qr_code": "EVT-6005-QR-001",
+      "checked_in": false,
+      "checked_in_at": null,
+      "registered_at": "2025-06-25T00:00:00Z",
+      "updated_at": "2025-06-25T00:00:00Z"
+    }
+  },
+  {
+    "model": "event_management.eventregistration",
+    "pk": 5012,
+    "fields": {
+      "event": 6006,
+      "user": 9002,
+      "status": "registered",
+      "note": "",
+      "qr_code": "EVT-6006-QR-001",
+      "checked_in": false,
+      "checked_in_at": null,
+      "registered_at": "2025-05-20T00:00:00Z",
+      "updated_at": "2025-05-20T00:00:00Z"
+    }
+  },
+  {
+    "model": "event_management.feedback",
+    "pk": 4001,
+    "fields": {
+      "event": 6001,
+      "user": 9002,
+      "registration": 5001,
+      "rating": 5,
+      "comment": "Amazing robotics showcase!",
+      "is_approved": true,
+      "is_anonymous": false,
+      "created_at": "2025-12-06T10:00:00Z",
+      "updated_at": "2025-12-06T10:00:00Z"
+    }
+  },
+  {
+    "model": "event_management.feedback",
+    "pk": 4002,
+    "fields": {
+      "event": 6002,
+      "user": 9003,
+      "registration": 5006,
+      "rating": 4,
+      "comment": "Great mentors and curriculum.",
+      "is_approved": true,
+      "is_anonymous": false,
+      "created_at": "2025-11-10T09:00:00Z",
+      "updated_at": "2025-11-10T09:00:00Z"
+    }
+  }
+]
